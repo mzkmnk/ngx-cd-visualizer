@@ -1,0 +1,9 @@
+{
+  "name": "demo-ngx-cd-visualizer-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/demo-ngx-cd-visualizer-e2e/src",
+  "implicitDependencies": ["demo-ngx-cd-visualizer"],
+  "// targets": "to see all targets run: nx show project demo-ngx-cd-visualizer-e2e --web",
+  "targets": {}
+}
