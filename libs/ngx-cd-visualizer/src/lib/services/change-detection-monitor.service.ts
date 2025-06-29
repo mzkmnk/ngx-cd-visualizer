@@ -104,8 +104,6 @@ export class ChangeDetectionMonitorService {
   }
 
   private setupZoneHooks(): void {
-    console.log('ChangeDetectionMonitorService: Setting up real-time monitoring');
-    
     try {
       // Hook into ApplicationRef's tick method to monitor change detection cycles
       const appRef = this.applicationRef as any;
@@ -120,7 +118,6 @@ export class ChangeDetectionMonitorService {
       this.setupPeriodicMonitoring();
       
     } catch (error) {
-      console.warn('ngx-cd-visualizer: Could not setup advanced monitoring, using fallback', error);
       this.setupPeriodicMonitoring();
     }
   }
@@ -146,7 +143,6 @@ export class ChangeDetectionMonitorService {
         return result;
       };
       
-      console.log('ngx-cd-visualizer: Hooked into ApplicationRef.tick()');
     }
   }
 
@@ -166,7 +162,6 @@ export class ChangeDetectionMonitorService {
         });
       }
     } catch (error) {
-      console.debug('ngx-cd-visualizer: Zone.js not available, using fallback monitoring');
       // Fallback to simple monitoring
       this.ngZone.runOutsideAngular(() => {
         setInterval(() => {
@@ -194,13 +189,11 @@ export class ChangeDetectionMonitorService {
 
   private onChangeDetectionStart(): void {
     this.startCycle();
-    console.log('ngx-cd-visualizer: Change detection cycle started');
   }
 
   private onChangeDetectionEnd(): void {
     this.updateComponentActivityStates();
     this.endCycle();
-    console.log('ngx-cd-visualizer: Change detection cycle ended');
   }
 
   private simulateChangeDetectionEvents(): void {
@@ -266,7 +259,6 @@ export class ChangeDetectionMonitorService {
       this.originalCheckStable = undefined;
     }
     
-    console.log('ChangeDetectionMonitorService: Monitoring stopped and hooks cleaned up');
   }
 
   private detectTriggerType(task: Task): ChangeDetectionTrigger {
@@ -314,7 +306,6 @@ export class ChangeDetectionMonitorService {
     // Listen for demo bulk update events
     this.customEventListener = (event: Event) => {
       if (event.type === 'demo-bulk-update') {
-        console.log('ngx-cd-visualizer: Detected bulk update event');
         this.triggerBulkChangeDetection();
       }
     };
@@ -332,7 +323,6 @@ export class ChangeDetectionMonitorService {
   }
 
   private triggerBulkChangeDetection(): void {
-    console.log('ngx-cd-visualizer: Triggering bulk change detection simulation');
     
     const components = this.componentTreeService.componentTree();
     const affectedComponents = components.filter(() => Math.random() > 0.3); // 70% of components

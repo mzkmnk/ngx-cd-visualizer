@@ -58,7 +58,6 @@ export class ComponentTreeService {
       const rootNodes: ComponentNode[] = [];
 
       if (rootComponents.length === 0) {
-        console.warn('ngx-cd-visualizer: No root components found');
         this._componentTree.set(allNodes);
         this._rootComponents.set(rootNodes);
         return;
@@ -89,11 +88,10 @@ export class ComponentTreeService {
         this.addMockChildComponents(rootNode, allNodes, existingNodes);
       }
 
-      console.log('ngx-cd-visualizer: Scanned components:', allNodes.length);
       this._componentTree.set(allNodes);
       this._rootComponents.set(rootNodes);
     } catch (error) {
-      console.error('ngx-cd-visualizer: Error scanning component tree:', error);
+      // Handle scanning errors gracefully
     } finally {
       this._isScanning.set(false);
     }
@@ -250,7 +248,7 @@ export class ComponentTreeService {
         this.traverseElementNodes((hostView as any).rootNodes, children);
       }
     } catch (error) {
-      console.debug('ngx-cd-visualizer: Could not access child components for', componentRef.componentType.name, error);
+      // Could not access child components
     }
 
     return children;

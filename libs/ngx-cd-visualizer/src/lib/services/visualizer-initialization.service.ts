@@ -61,9 +61,8 @@ export class VisualizerInitializationService {
       const domElem = this.overlayRef.location.nativeElement;
       this.document.body.appendChild(domElem);
 
-      console.log('ngx-cd-visualizer: Overlay initialized successfully');
     } catch (error) {
-      console.error('ngx-cd-visualizer: Failed to initialize overlay', error);
+      // Handle initialization errors gracefully
     }
   }
 
@@ -72,7 +71,6 @@ export class VisualizerInitializationService {
       this.appRef.detachView(this.overlayRef.hostView);
       this.overlayRef.destroy();
       this.overlayRef = null;
-      console.log('ngx-cd-visualizer: Overlay destroyed');
     }
   }
 
