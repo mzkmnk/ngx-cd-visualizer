@@ -109,9 +109,6 @@ export interface TestComponentClass {
   __annotations__?: ComponentAnnotation[];
 }
 
-// Union type for provider values
-export type ProviderValue = string | number | boolean | object | Function;
-
 // Type for mock service methods
 export interface MockServiceMethods {
   [key: string]: MockFunction | (() => unknown);
