@@ -4,24 +4,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-This is an Nx workspace with Angular applications and libraries.
+This is an Nx workspace with Angular applications and libraries. **This project uses pnpm as the package manager.**
+
+### Package Manager
+- **Package Manager**: pnpm (required)
+- **Install dependencies**: `pnpm install`
+- **Add dependency**: `pnpm add [package-name]`
+- **Add dev dependency**: `pnpm add -D [package-name]`
 
 ### Core Development Commands
-- **Start dev server**: `npx nx serve demo-ngx-cd-visualizer`
-- **Build for production**: `npx nx build demo-ngx-cd-visualizer`
-- **Build library**: `npx nx build ngx-cd-visualizer`
-- **Run tests**: `npx nx test [project-name]` or `npx nx run-many -t test`
-- **Run linting**: `npx nx lint [project-name]` or `npx nx run-many -t lint`
-- **Run e2e tests**: `npx nx e2e demo-ngx-cd-visualizer-e2e`
+- **Start dev server**: `pnpm nx serve demo-ngx-cd-visualizer`
+- **Build for production**: `pnpm nx build demo-ngx-cd-visualizer`
+- **Build library**: `pnpm nx build ngx-cd-visualizer`
+- **Run tests**: `pnpm nx test [project-name]` or `pnpm nx run-many -t test`
+- **Run linting**: `pnpm nx lint [project-name]` or `pnpm nx run-many -t lint`
+- **Run e2e tests**: `pnpm nx e2e demo-ngx-cd-visualizer-e2e`
 
 ### Build and Test All
-- **Build all projects**: `npx nx run-many -t build`
-- **Test all projects**: `npx nx run-many -t test`
-- **Lint all projects**: `npx nx run-many -t lint`
+- **Build all projects**: `pnpm nx run-many -t build`
+- **Test all projects**: `pnpm nx run-many -t test`
+- **Lint all projects**: `pnpm nx run-many -t lint`
 
 ### Project Information
-- **Show project targets**: `npx nx show project [project-name]`
-- **View dependency graph**: `npx nx graph`
+- **Show project targets**: `pnpm nx show project [project-name]`
+- **View dependency graph**: `pnpm nx graph`
 
 ## Architecture
 
@@ -37,6 +43,7 @@ This is an Nx monorepo containing:
   - Currently in initial development phase (empty lib)
 
 ### Technology Stack
+- **Package Manager**: pnpm (enforced via .npmrc and package.json)
 - **Framework**: Angular 20.0.0 with standalone components
 - **Build System**: Nx 21.2.1 with Angular CLI
 - **Testing**: Jest for unit tests, Playwright for e2e
