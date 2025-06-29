@@ -7,9 +7,9 @@
   },
   "engines": {
     "node": ">=20.0.0",
-    "pnpm": ">=8.0.0"
+    "pnpm": ">=10"
   },
-  "packageManager": "pnpm@8.15.4",
+  "packageManager": "pnpm@10.11.0",
   "private": true,
   "dependencies": {
     "@angular/common": "~20.0.0",
