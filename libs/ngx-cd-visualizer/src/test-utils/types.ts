@@ -1,5 +1,4 @@
 import { ApplicationRef, NgZone, ComponentRef, Type, ViewRef, Injector, ElementRef, ChangeDetectorRef } from '@angular/core';
-import { Observable } from 'rxjs';
 
 /**
  * Type definitions for testing utilities

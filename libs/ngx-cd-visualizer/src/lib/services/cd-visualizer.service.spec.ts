@@ -4,13 +4,13 @@ import { ChangeDetectionMonitorService } from './change-detection-monitor.servic
 import { ComponentTreeService } from './component-tree.service';
 import { NGX_CD_VISUALIZER_CONFIG } from '../tokens';
 import { CdVisualizerConfig } from '../models';
-import { 
-  createTestConfig, 
-  createMockComponentTree, 
+import {
+  createTestConfig,
+  createMockComponentTree,
   createMockChangeDetectionEvent,
-  flushTimersAndPromises,
-  setupTestingModule
+  flushTimersAndPromises
 } from '../../test-utils';
+import { setupSimpleTestEnvironment } from '../../test-utils/angular-test-setup';
 
 describe('CdVisualizerService', () => {
   let service: CdVisualizerService;
@@ -20,7 +20,7 @@ describe('CdVisualizerService', () => {
 
   beforeEach(() => {
     testConfig = createTestConfig();
-    
+
     mockMonitorService = {
       startMonitoring: jest.fn(),
       stopMonitoring: jest.fn(),
@@ -49,15 +49,20 @@ describe('CdVisualizerService', () => {
       isScanning: jest.fn().mockReturnValue(false),
       updateComponentActivity: jest.fn(),
       incrementChangeDetectionCount: jest.fn(),
-      createSnapshot: jest.fn()
+      createSnapshot: jest.fn().mockReturnValue({
+        timestamp: Date.now(),
+        nodes: [],
+        rootNodes: []
+      })
     } as any;
 
     TestBed.configureTestingModule({
-      ...setupTestingModule([
-        { provide: NGX_CD_VISUALIZER_CONFIG, useValue: testConfig },
+      providers: [
+        CdVisualizerService,
         { provide: ChangeDetectionMonitorService, useValue: mockMonitorService },
-        { provide: ComponentTreeService, useValue: mockComponentTreeService }
-      ])
+        { provide: ComponentTreeService, useValue: mockComponentTreeService },
+        { provide: NGX_CD_VISUALIZER_CONFIG, useValue: testConfig }
+      ]
     });
 
     service = TestBed.inject(CdVisualizerService);
@@ -82,7 +87,7 @@ describe('CdVisualizerService', () => {
 
     it('should start monitoring when enabled', async () => {
       await flushTimersAndPromises();
-      
+
       expect(mockMonitorService.startMonitoring).toHaveBeenCalled();
       expect(mockComponentTreeService.scanComponentTree).toHaveBeenCalled();
     });
@@ -90,11 +95,19 @@ describe('CdVisualizerService', () => {
     it('should not start monitoring when disabled', async () => {
       const disabledConfig = createTestConfig({ enabled: false });
       
-      TestBed.overrideProvider(NGX_CD_VISUALIZER_CONFIG, { useValue: disabledConfig });
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          CdVisualizerService,
+          { provide: ChangeDetectionMonitorService, useValue: mockMonitorService },
+          { provide: ComponentTreeService, useValue: mockComponentTreeService },
+          { provide: NGX_CD_VISUALIZER_CONFIG, useValue: disabledConfig }
+        ]
+      });
+      
       const disabledService = TestBed.inject(CdVisualizerService);
-      
       await flushTimersAndPromises();
-      
+
       expect(mockMonitorService.startMonitoring).not.toHaveBeenCalled();
     });
 
@@ -108,9 +121,9 @@ describe('CdVisualizerService', () => {
   describe('Configuration Management', () => {
     it('should update configuration', () => {
       const newConfig = { theme: 'dark' as const, showOnlyChanges: true };
-      
+
       service.updateConfig(newConfig);
-      
+
       const config = service.config();
       expect(config.theme).toBe('dark');
       expect(config.showOnlyChanges).toBe(true);
@@ -120,12 +133,12 @@ describe('CdVisualizerService', () => {
     it('should react to configuration changes', async () => {
       service.updateConfig({ enabled: false });
       await flushTimersAndPromises();
-      
+
       expect(mockMonitorService.stopMonitoring).toHaveBeenCalled();
-      
+
       service.updateConfig({ enabled: true });
       await flushTimersAndPromises();
-      
+
       expect(mockMonitorService.startMonitoring).toHaveBeenCalledTimes(2);
     });
   });
@@ -133,10 +146,10 @@ describe('CdVisualizerService', () => {
   describe('Visibility Control', () => {
     it('should toggle visibility', () => {
       expect(service.isVisible()).toBe(true);
-      
+
       service.toggle();
       expect(service.isVisible()).toBe(false);
-      
+
       service.toggle();
       expect(service.isVisible()).toBe(true);
     });
@@ -144,17 +157,17 @@ describe('CdVisualizerService', () => {
     it('should show and hide', () => {
       service.hide();
       expect(service.isVisible()).toBe(false);
-      
+
       service.show();
       expect(service.isVisible()).toBe(true);
     });
 
     it('should minimize and maximize', () => {
       expect(service.isMinimized()).toBe(false);
-      
+
       service.minimize();
       expect(service.isMinimized()).toBe(true);
-      
+
       service.maximize();
       expect(service.isMinimized()).toBe(false);
     });
@@ -162,7 +175,7 @@ describe('CdVisualizerService', () => {
     it('should toggle minimize state', () => {
       service.toggleMinimize();
       expect(service.isMinimized()).toBe(true);
-      
+
       service.toggleMinimize();
       expect(service.isMinimized()).toBe(false);
     });
@@ -171,26 +184,26 @@ describe('CdVisualizerService', () => {
   describe('Monitoring Control', () => {
     it('should start monitoring', () => {
       service.startMonitoring();
-      
+
       expect(mockMonitorService.startMonitoring).toHaveBeenCalled();
       expect(mockComponentTreeService.scanComponentTree).toHaveBeenCalled();
     });
 
     it('should stop monitoring', () => {
       service.stopMonitoring();
-      
+
       expect(mockMonitorService.stopMonitoring).toHaveBeenCalled();
     });
 
     it('should refresh component tree', () => {
       service.refreshComponentTree();
-      
+
       expect(mockComponentTreeService.scanComponentTree).toHaveBeenCalled();
     });
 
     it('should clear history', () => {
       service.clearHistory();
-      
+
       expect(mockMonitorService.clearHistory).toHaveBeenCalled();
       expect(mockComponentTreeService.resetActivityStates).toHaveBeenCalled();
     });
@@ -204,24 +217,24 @@ describe('CdVisualizerService', () => {
 
     it('should return unfiltered tree by default', () => {
       const filtered = service.filteredComponentTree();
-      
+
       expect(filtered).toHaveLength(3);
     });
 
     it('should exclude specified components', () => {
       service.updateConfig({ excludeComponents: ['app-child1'] });
-      
+
       const filtered = service.filteredComponentTree();
-      
+
       expect(filtered).toHaveLength(2);
       expect(filtered.every(c => c.selector !== 'app-child1')).toBe(true);
     });
 
     it('should exclude components by name', () => {
       service.updateConfig({ excludeComponents: ['ChildComponent1'] });
-      
+
       const filtered = service.filteredComponentTree();
-      
+
       expect(filtered).toHaveLength(2);
       expect(filtered.every(c => c.name !== 'ChildComponent1')).toBe(true);
     });
@@ -230,11 +243,11 @@ describe('CdVisualizerService', () => {
       const mockTree = createMockComponentTree();
       mockTree[1].isActive = true; // Make child1 active
       mockComponentTreeService.componentTree.mockReturnValue(mockTree);
-      
+
       service.updateConfig({ showOnlyChanges: true });
-      
+
       const filtered = service.filteredComponentTree();
-      
+
       expect(filtered).toHaveLength(1);
       expect(filtered[0].name).toBe('ChildComponent1');
     });
@@ -243,11 +256,11 @@ describe('CdVisualizerService', () => {
       const mockTree = createMockComponentTree();
       mockTree[2].changeDetectionCount = 5; // Give child2 some changes
       mockComponentTreeService.componentTree.mockReturnValue(mockTree);
-      
+
       service.updateConfig({ showOnlyChanges: true });
-      
+
       const filtered = service.filteredComponentTree();
-      
+
       expect(filtered).toHaveLength(1);
       expect(filtered[0].name).toBe('ChildComponent2');
     });
@@ -257,14 +270,14 @@ describe('CdVisualizerService', () => {
       mockTree[1].isActive = true;
       mockTree[2].changeDetectionCount = 5;
       mockComponentTreeService.componentTree.mockReturnValue(mockTree);
-      
-      service.updateConfig({ 
-        showOnlyChanges: true, 
-        excludeComponents: ['ChildComponent1'] 
+
+      service.updateConfig({
+        showOnlyChanges: true,
+        excludeComponents: ['ChildComponent1']
       });
-      
+
       const filtered = service.filteredComponentTree();
-      
+
       expect(filtered).toHaveLength(1);
       expect(filtered[0].name).toBe('ChildComponent2');
     });
@@ -274,7 +287,7 @@ describe('CdVisualizerService', () => {
     beforeEach(() => {
       const mockTree = createMockComponentTree();
       const mockEvents = [createMockChangeDetectionEvent()];
-      
+
       mockComponentTreeService.componentTree.mockReturnValue(mockTree);
       mockComponentTreeService.componentCount.mockReturnValue(3);
       mockComponentTreeService.onPushComponentCount.mockReturnValue(1);
@@ -285,7 +298,7 @@ describe('CdVisualizerService', () => {
     it('should export complete data', () => {
       const exportedData = service.exportData();
       const parsedData = JSON.parse(exportedData);
-      
+
       expect(parsedData.timestamp).toBeTruthy();
       expect(parsedData.config).toEqual(service.config());
       expect(parsedData.componentTree).toHaveLength(3);
@@ -297,7 +310,7 @@ describe('CdVisualizerService', () => {
 
     it('should export valid JSON', () => {
       const exportedData = service.exportData();
-      
+
       expect(() => JSON.parse(exportedData)).not.toThrow();
     });
   });
@@ -311,25 +324,25 @@ describe('CdVisualizerService', () => {
 
     it('should focus component in debug mode', () => {
       service.updateConfig({ debugMode: true });
-      
+
       service.focusComponent('test-id');
-      
+
       expect(mockComponentTreeService.findComponentById).toHaveBeenCalledWith('test-id');
       expect(mockComponentTreeService.getComponentPath).toHaveBeenCalledWith('test-id');
     });
 
     it('should not process focus when debug mode is disabled', () => {
       service.updateConfig({ debugMode: false });
-      
+
       service.focusComponent('test-id');
-      
+
       expect(mockComponentTreeService.findComponentById).toHaveBeenCalledWith('test-id');
       expect(mockComponentTreeService.getComponentPath).not.toHaveBeenCalled();
     });
 
     it('should handle non-existent component gracefully', () => {
       mockComponentTreeService.findComponentById.mockReturnValue(null);
-      
+
       expect(() => service.focusComponent('non-existent')).not.toThrow();
     });
   });
@@ -338,7 +351,7 @@ describe('CdVisualizerService', () => {
     beforeEach(() => {
       const mockTree = createMockComponentTree();
       const mockEvents = [createMockChangeDetectionEvent()];
-      
+
       mockComponentTreeService.componentTree.mockReturnValue(mockTree);
       mockMonitorService.recentEvents.mockReturnValue(mockEvents);
       mockMonitorService.isMonitoring.mockReturnValue(true);
@@ -346,14 +359,14 @@ describe('CdVisualizerService', () => {
 
     it('should expose component tree from service', () => {
       const tree = service.componentTree();
-      
+
       expect(tree).toHaveLength(3);
       expect(tree[0].name).toBe('ParentComponent');
     });
 
     it('should expose active changes from monitor service', () => {
       const changes = service.activeChanges();
-      
+
       expect(changes).toHaveLength(1);
     });
 
@@ -367,23 +380,23 @@ describe('CdVisualizerService', () => {
       // Fast-forward 5 seconds
       jest.advanceTimersByTime(5000);
       await flushTimersAndPromises();
-      
+
       // Should have called scanComponentTree during periodic scanning
       expect(mockComponentTreeService.scanComponentTree).toHaveBeenCalled();
     });
 
     it('should only scan when monitoring is active and enabled', async () => {
       mockMonitorService.isMonitoring.mockReturnValue(false);
-      
+
       jest.advanceTimersByTime(5000);
       await flushTimersAndPromises();
-      
+
       // Reset call count and test
       mockComponentTreeService.scanComponentTree.mockClear();
-      
+
       jest.advanceTimersByTime(5000);
       await flushTimersAndPromises();
-      
+
       // Should not scan when monitoring is inactive
       expect(mockComponentTreeService.scanComponentTree).not.toHaveBeenCalled();
     });
@@ -391,10 +404,10 @@ describe('CdVisualizerService', () => {
     it('should respect disabled state for periodic scanning', async () => {
       service.updateConfig({ enabled: false });
       mockComponentTreeService.scanComponentTree.mockClear();
-      
+
       jest.advanceTimersByTime(5000);
       await flushTimersAndPromises();
-      
+
       expect(mockComponentTreeService.scanComponentTree).not.toHaveBeenCalled();
     });
   });
@@ -404,7 +417,7 @@ describe('CdVisualizerService', () => {
       mockMonitorService.startMonitoring.mockImplementation(() => {
         throw new Error('Monitor error');
       });
-      
+
       expect(() => service.startMonitoring()).not.toThrow();
     });
 
@@ -412,7 +425,7 @@ describe('CdVisualizerService', () => {
       mockComponentTreeService.scanComponentTree.mockImplementation(() => {
         throw new Error('Tree service error');
       });
-      
+
       expect(() => service.refreshComponentTree()).not.toThrow();
     });
 
@@ -420,9 +433,9 @@ describe('CdVisualizerService', () => {
       mockComponentTreeService.componentTree.mockImplementation(() => {
         throw new Error('Export error');
       });
-      
+
       const exportedData = service.exportData();
-      
+
       // Should still return valid JSON even with errors
       expect(() => JSON.parse(exportedData)).not.toThrow();
     });
@@ -431,14 +444,14 @@ describe('CdVisualizerService', () => {
   describe('Integration', () => {
     it('should coordinate between monitor and tree services', () => {
       service.startMonitoring();
-      
+
       expect(mockMonitorService.startMonitoring).toHaveBeenCalled();
       expect(mockComponentTreeService.scanComponentTree).toHaveBeenCalled();
     });
 
     it('should clear both services when clearing history', () => {
       service.clearHistory();
-      
+
       expect(mockMonitorService.clearHistory).toHaveBeenCalled();
       expect(mockComponentTreeService.resetActivityStates).toHaveBeenCalled();
     });
@@ -446,12 +459,12 @@ describe('CdVisualizerService', () => {
     it('should coordinate configuration updates with effect system', async () => {
       service.updateConfig({ enabled: false });
       await flushTimersAndPromises();
-      
+
       expect(mockMonitorService.stopMonitoring).toHaveBeenCalled();
-      
+
       service.updateConfig({ enabled: true });
       await flushTimersAndPromises();
-      
+
       expect(mockMonitorService.startMonitoring).toHaveBeenCalledTimes(2);
     });
   });

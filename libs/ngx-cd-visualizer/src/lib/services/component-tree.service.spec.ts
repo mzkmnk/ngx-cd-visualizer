@@ -11,6 +11,7 @@ import {
   createMockComponentTree,
   MockApplicationRef
 } from '../../test-utils';
+import { setupSimpleTestEnvironment } from '../../test-utils/angular-test-setup';
 
 describe('ComponentTreeService', () => {
   let service: ComponentTreeService;
@@ -349,7 +350,14 @@ describe('ComponentTreeService', () => {
         }
       };
       
-      TestBed.overrideProvider(ApplicationRef, { useValue: errorApplicationRef });
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          ComponentTreeService,
+          { provide: ApplicationRef, useValue: errorApplicationRef }
+        ]
+      });
+      
       const errorService = TestBed.inject(ComponentTreeService);
       
       expect(() => errorService.scanComponentTree()).not.toThrow();

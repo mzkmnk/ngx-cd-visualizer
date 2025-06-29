@@ -109,7 +109,7 @@ export function createMockApplicationRef(): MockApplicationRef {
     isStable: true,
     bootstrap: jest.fn(),
     destroy: jest.fn()
-  };
+  } as MockApplicationRef;
 }
 
 /**
@@ -118,7 +118,11 @@ export function createMockApplicationRef(): MockApplicationRef {
 export function createMockNgZone(): MockNgZone {
   return {
     run: jest.fn((fn: () => unknown) => fn()),
-    runOutsideAngular: jest.fn((fn: () => unknown) => fn()),
+    runOutsideAngular: jest.fn((fn: () => unknown) => {
+      const result = fn();
+      // Return interval ID for setInterval calls
+      return typeof result === 'number' ? result : result;
+    }),
     runGuarded: jest.fn((fn: () => unknown) => fn()),
     runTask: jest.fn((fn: () => unknown) => fn()),
     isStable: true,
@@ -134,7 +138,7 @@ export function createMockNgZone(): MockNgZone {
     onMicrotaskEmpty: {
       subscribe: jest.fn()
     }
-  };
+  } as MockNgZone;
 }
 
 /**
