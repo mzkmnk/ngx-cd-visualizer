@@ -61,3 +61,86 @@ This is an Nx monorepo containing:
 - Demo app uses standard Angular standalone component architecture
 - E2e tests configured with Playwright
 - Release process configured with `npx nx release`
+
+## ngx-cd-visualizer 実装プラン
+
+### プロジェクト概要
+Angular 20のOnPush戦略とSignals導入に伴い、変更検知の伝播をリアルタイムで可視化するライブラリを構築します。開発者がアプリケーションを操作した際に、どのコンポーネントで変更検知が発生しているかを直感的に把握できるUIを提供します。
+
+### 主要機能
+1. **オーバーレイUI**: 画面右下にドラッグ可能な小さなウィンドウを表示
+2. **コンポーネントツリー表示**: アプリケーションのコンポーネント階層を視覚化
+3. **リアルタイム変更検知監視**: 変更検知が発生したコンポーネントを即座にハイライト
+4. **状態インジケーター**: 変更検知の状態を色分けで表示（アクティブ/非アクティブ/OnPush）
+5. **最小化/展開機能**: 開発時の邪魔にならないよう表示をコントロール
+
+### 実装Phase
+
+#### Phase 1: コアアーキテクチャ
+- **データモデル定義**: `ComponentNode`, `ChangeDetectionEvent` インターフェース
+- **ChangeDetectionMonitorService**: Zone.js hooks を使用した変更検知イベントの監視
+- **ComponentTreeService**: ApplicationRef を使用したコンポーネントツリー解析
+
+#### Phase 2: UI コンポーネント
+- **VisualizerOverlayComponent**: メインのオーバーレイウィンドウ（ドラッグ対応）
+- **ComponentTreeComponent**: ツリー構造の表示コンポーネント
+- **ComponentNodeComponent**: 個別ノードの表示とインタラクション
+- **レスポンシブ設計**: 最小化/展開機能とサイズ調整
+
+#### Phase 3: 統合とAPI
+- **provideNgxCdVisualizer()**: 簡単な統合のためのProvider関数
+- **設定オプション**: 表示設定、フィルタリング、テーマカスタマイズ
+- **パフォーマンス最適化**: 本番環境での自動無効化オプション
+
+#### Phase 4: デモとテスト
+- **デモアプリケーション強化**: OnPush/Signal使用例の追加
+- **ユニットテスト**: コアサービスとコンポーネントのテスト
+- **E2Eテスト**: 実際の変更検知シナリオの検証
+
+### 技術的アプローチ
+- **Angular ApplicationRef**: コンポーネントツリーの取得と監視
+- **Zone.js Hooks**: 変更検知サイクルのイベント捕捉
+- **Signals**: リアクティブなUI更新とパフォーマンス最適化
+- **CSS Custom Properties**: テーマとスタイルのカスタマイズ
+- **Standalone Components**: Angular 20のモダンアーキテクチャに準拠
+
+### APIデザイン概要
+```typescript
+// プロバイダー関数
+export function provideNgxCdVisualizer(config?: CdVisualizerConfig): Provider[]
+
+// 設定インターフェース
+export interface CdVisualizerConfig {
+  enabled?: boolean;
+  position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+  theme?: 'light' | 'dark' | 'auto';
+  showOnlyChanges?: boolean;
+  excludeComponents?: string[];
+}
+
+// メインサービス
+export class CdVisualizerService {
+  readonly componentTree: Signal<ComponentNode[]>;
+  readonly activeChanges: Signal<ChangeDetectionEvent[]>;
+  
+  toggle(): void;
+  minimize(): void;
+  expand(): void;
+}
+```
+
+### 使用方法
+```typescript
+// main.ts
+import { provideNgxCdVisualizer } from '@mzkmnk/ngx-cd-visualizer';
+
+bootstrapApplication(AppComponent, {
+  providers: [
+    provideNgxCdVisualizer({
+      enabled: !environment.production,
+      position: 'bottom-right',
+      theme: 'dark'
+    })
+  ]
+});
+```
