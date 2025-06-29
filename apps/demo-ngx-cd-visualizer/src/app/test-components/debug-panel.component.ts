@@ -129,8 +129,10 @@ export class DebugPanelComponent implements OnInit {
 
   ngOnInit() {
     console.log('DebugPanelComponent initialized');
-    // Auto-start monitoring for demo purposes
-    this.startMonitoring();
+    // Delay auto-start to avoid initialization issues
+    setTimeout(() => {
+      this.startMonitoring();
+    }, 100);
   }
 
   startMonitoring() {

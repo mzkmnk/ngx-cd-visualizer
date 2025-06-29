@@ -152,7 +152,7 @@ export class ComponentTreeService {
         }
       }
     } catch {
-      // Ignore errors accessing private properties
+      // Fallback to component name if metadata access fails
     }
 
     // Fallback to component name
@@ -161,26 +161,15 @@ export class ComponentTreeService {
 
   private isOnPushComponent(componentRef: ComponentRef<any>): boolean {
     try {
-      const changeDetectorRef = componentRef.changeDetectorRef;
-      // Access the strategy through the internal _lView if available
-      const lView = (changeDetectorRef as any)._lView;
-      if (lView && lView[1] /* TVIEW */) {
-        const tView = lView[1];
-        return tView.type === ChangeDetectionStrategy.OnPush;
+      const componentType = componentRef.componentType;
+      const annotations = (componentType as any).__annotations__ || [];
+      for (const annotation of annotations) {
+        if (annotation.changeDetection === ChangeDetectionStrategy.OnPush) {
+          return true;
+        }
       }
     } catch {
-      // Fallback: check component metadata
-      const componentType = componentRef.componentType;
-      try {
-        const annotations = (componentType as any).__annotations__ || [];
-        for (const annotation of annotations) {
-          if (annotation.changeDetection === ChangeDetectionStrategy.OnPush) {
-            return true;
-          }
-        }
-      } catch {
-        // Ignore errors accessing private properties
-      }
+      // Default to false if metadata access fails
     }
     return false;
   }

@@ -54,7 +54,7 @@ export class CdVisualizerService {
     // Auto-start monitoring when service is created
     effect(() => {
       if (this._config().enabled) {
-        this.startMonitoring();
+        setTimeout(() => this.startMonitoring(), 500);
       } else {
         this.stopMonitoring();
       }
@@ -129,8 +129,8 @@ export class CdVisualizerService {
   focusComponent(componentId: string): void {
     const component = this.componentTreeService.findComponentById(componentId);
     if (component && this._config().debugMode) {
-      console.log('Focused component:', component);
-      console.log('Component path:', this.componentTreeService.getComponentPath(componentId));
+      // Debug information is available for development
+      this.componentTreeService.getComponentPath(componentId);
     }
   }
 

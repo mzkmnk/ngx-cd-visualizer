@@ -15,6 +15,7 @@ export class ChangeDetectionMonitorService {
   private readonly _isMonitoring = signal(false);
   private _currentCycle: ChangeDetectionCycle | null = null;
   private _maxHistorySize = 1000;
+  private _monitoringInterval: ReturnType<typeof setInterval> | null = null;
 
   readonly events = this._events.asReadonly();
   readonly cycles = this._cycles.asReadonly();
@@ -90,18 +91,25 @@ export class ChangeDetectionMonitorService {
     // Full Zone.js hooks implementation planned for Phase 2
     console.log('ChangeDetectionMonitorService: Monitoring started');
     
-    this.ngZone.runOutsideAngular(() => {
+    if (this._monitoringInterval) {
+      clearInterval(this._monitoringInterval);
+    }
+    
+    this._monitoringInterval = this.ngZone.runOutsideAngular(() => 
       setInterval(() => {
         if (this._isMonitoring()) {
           this.startCycle();
           setTimeout(() => this.endCycle(), 100);
         }
-      }, 1000);
-    });
+      }, 1000)
+    );
   }
 
   private cleanupZoneHooks(): void {
-    // Zone hooks cleanup implementation planned for Phase 2
+    if (this._monitoringInterval) {
+      clearInterval(this._monitoringInterval);
+      this._monitoringInterval = null;
+    }
   }
 
   private detectTriggerType(task: Task): ChangeDetectionTrigger {
