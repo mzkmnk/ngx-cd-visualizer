@@ -1,7 +1,5 @@
 import { 
   ChangeDetectionTrigger, 
-  ComponentNode, 
-  ChangeDetectionEvent,
   ChangeDetectionCycle,
   CdVisualizerConfig
 } from './index';

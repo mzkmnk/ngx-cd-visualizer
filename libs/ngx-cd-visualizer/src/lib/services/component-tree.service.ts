@@ -165,7 +165,7 @@ export class ComponentTreeService {
     };
 
     // Get child components from the component's view
-    const children = this.getChildComponents(componentRef);
+    const children = this.getChildComponents();
     for (const childRef of children) {
       const childNode = this.buildComponentNode(childRef, node, depth + 1);
       node.children.push(childNode);
@@ -211,7 +211,7 @@ export class ComponentTreeService {
     return false;
   }
 
-  private getChildComponents(_componentRef: ComponentRef<object>): ComponentRef<object>[] {
+  private getChildComponents(): ComponentRef<object>[] {
     // Child component detection implementation planned for Phase 2
     return [];
   }

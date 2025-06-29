@@ -4,7 +4,6 @@ import {
   MockComponentRef, 
   MockApplicationRef, 
   MockNgZone, 
-  TestComponentType,
   TestComponentClass,
   TestProviderConfig,
   TestProvider

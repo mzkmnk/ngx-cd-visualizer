@@ -176,7 +176,7 @@ describe('ComponentTreeService', () => {
       const nodes = service.componentTree();
       if (nodes.length > 0) {
         const componentId = nodes[0].id;
-        const originalState = service.findComponentById(componentId);
+        // Get component state before update
         
         service.updateComponentActivity(componentId, true);
         

@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ApplicationRef, NgZone, ChangeDetectionStrategy } from '@angular/core';
+import { ApplicationRef, NgZone } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { createMockApplicationRef, createMockNgZone } from './test-utils';
 

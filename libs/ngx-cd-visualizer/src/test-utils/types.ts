@@ -1,4 +1,4 @@
-import { ApplicationRef, NgZone, ComponentRef, Type, ViewRef, Injector, ElementRef, ChangeDetectorRef } from '@angular/core';
+import { ComponentRef, Type, ElementRef } from '@angular/core';
 
 /**
  * Type definitions for testing utilities
