@@ -276,7 +276,9 @@ export class ComponentNodeComponent {
     return count.toString();
   }
 
-  formatTime(timestamp: number): string {
+  formatTime(timestamp: number | undefined): string {
+    if (!timestamp) return '';
+    
     const now = Date.now();
     const diff = now - timestamp;
     
