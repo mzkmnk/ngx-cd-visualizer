@@ -14,8 +14,9 @@ import { User } from '../../services/user.service';
       <form (ngSubmit)="submitForm()" #userForm="ngForm">
         <div class="form-row">
           <div class="form-group">
-            <label>Name *</label>
+            <label for="user-name">Name *</label>
             <input 
+              id="user-name"
               type="text" 
               [(ngModel)]="formData.name" 
               name="name"
@@ -25,8 +26,9 @@ import { User } from '../../services/user.service';
           </div>
           
           <div class="form-group">
-            <label>Email *</label>
+            <label for="user-email">Email *</label>
             <input 
+              id="user-email"
               type="email" 
               [(ngModel)]="formData.email" 
               name="email"
@@ -38,8 +40,8 @@ import { User } from '../../services/user.service';
 
         <div class="form-row">
           <div class="form-group">
-            <label>Role</label>
-            <select [(ngModel)]="formData.role" name="role" class="form-select">
+            <label for="user-role">Role</label>
+            <select id="user-role" [(ngModel)]="formData.role" name="role" class="form-select">
               <option value="user">User</option>
               <option value="admin">Admin</option>
               <option value="manager">Manager</option>
@@ -47,8 +49,8 @@ import { User } from '../../services/user.service';
           </div>
           
           <div class="form-group">
-            <label>Avatar</label>
-            <div class="avatar-picker">
+            <label for="avatar-picker">Avatar</label>
+            <div id="avatar-picker" class="avatar-picker">
               @for (avatar of avatars; track avatar) {
                 <button 
                   type="button"

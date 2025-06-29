@@ -90,7 +90,7 @@ export class ComponentTreeService {
 
       this._componentTree.set(allNodes);
       this._rootComponents.set(rootNodes);
-    } catch (error) {
+    } catch {
       // Handle scanning errors gracefully
     } finally {
       this._isScanning.set(false);
@@ -244,23 +244,23 @@ export class ComponentTreeService {
     try {
       // Access the component's view for Angular 20+
       const hostView = componentRef.hostView;
-      if (hostView && (hostView as any).rootNodes) {
-        this.traverseElementNodes((hostView as any).rootNodes, children);
+      if (hostView && (hostView as unknown as Record<string, unknown>)['rootNodes']) {
+        this.traverseElementNodes((hostView as unknown as Record<string, unknown>)['rootNodes'] as unknown[], children);
       }
-    } catch (error) {
+    } catch {
       // Could not access child components
     }
 
     return children;
   }
 
-  private traverseElementNodes(nodes: any[], children: ComponentRef<object>[]): void {
+  private traverseElementNodes(nodes: unknown[], children: ComponentRef<object>[]): void {
     if (!nodes || !Array.isArray(nodes)) return;
     
-    for (const node of nodes) {
+    for (const node of nodes as Record<string, unknown>[]) {
       // Check if this node has a component reference
-      if (node && node.__ngContext__) {
-        const context = node.__ngContext__;
+      if (node && (node as Record<string, unknown>)['__ngContext__']) {
+        const context = (node as Record<string, unknown>)['__ngContext__'];
         if (context && Array.isArray(context)) {
           // Look for component references in the context array
           for (const item of context) {
@@ -274,8 +274,8 @@ export class ComponentTreeService {
       }
 
       // Traverse child nodes
-      if (node && node.childNodes) {
-        this.traverseElementNodes(Array.from(node.childNodes), children);
+      if (node && (node as Record<string, unknown>)['childNodes']) {
+        this.traverseElementNodes(Array.from((node as Record<string, unknown>)['childNodes'] as ArrayLike<unknown>), children);
       }
     }
   }

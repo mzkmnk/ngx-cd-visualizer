@@ -36,7 +36,15 @@ import { Product } from '../../services/product.service';
             <button class="save-btn" (click)="savePrice()">✓</button>
             <button class="cancel-btn" (click)="cancelEdit()">✕</button>
           } @else {
-            <span class="price" (click)="startEditPrice()">\${{ product().price.toFixed(2) }}</span>
+            <span class="price" 
+                  (click)="startEditPrice()" 
+                  (keydown.enter)="startEditPrice()" 
+                  (keydown.space)="startEditPrice()"
+                  tabindex="0"
+                  role="button"
+                  aria-label="Edit price">
+              \${{ product().price.toFixed(2) }}
+            </span>
           }
         </div>
         

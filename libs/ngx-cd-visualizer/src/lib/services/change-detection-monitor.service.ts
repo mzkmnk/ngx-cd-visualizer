@@ -3,15 +3,15 @@ import { ComponentTreeService } from './component-tree.service';
 
 declare global {
   interface Zone {
-    _properties?: any;
-    _zoneDelegate?: any;
+    _properties?: Record<string, unknown>;
+    _zoneDelegate?: Record<string, unknown>;
   }
 }
 
 declare interface Task {
   type: string;
   source: string;
-  callback: Function;
+  callback: (...args: unknown[]) => unknown;
 }
 import { ChangeDetectionEvent, ChangeDetectionTrigger, ChangeDetectionCycle, ComponentNode } from '../models';
 
@@ -37,7 +37,7 @@ export class ChangeDetectionMonitorService {
   private applicationRef = inject(ApplicationRef);
   private componentTreeService = inject(ComponentTreeService);
   
-  private originalCheckStable?: Function;
+  private originalCheckStable?: (...args: unknown[]) => unknown;
   private changeDetectionCount = 0;
   private customEventListener?: (event: Event) => void;
 
@@ -106,8 +106,8 @@ export class ChangeDetectionMonitorService {
   private setupZoneHooks(): void {
     try {
       // Hook into ApplicationRef's tick method to monitor change detection cycles
-      const appRef = this.applicationRef as any;
-      if (appRef._views) {
+      const appRef = this.applicationRef as unknown as Record<string, unknown>;
+      if (appRef['_views']) {
         this.setupApplicationRefHook();
       }
 
@@ -117,19 +117,19 @@ export class ChangeDetectionMonitorService {
       // Fallback: periodic monitoring for demonstration
       this.setupPeriodicMonitoring();
       
-    } catch (error) {
+    } catch {
       this.setupPeriodicMonitoring();
     }
   }
 
   private setupApplicationRefHook(): void {
-    const appRef = this.applicationRef as any;
+    const appRef = this.applicationRef as unknown as Record<string, unknown>;
     
     // Hook into the tick method if available
-    if (appRef.tick && !this.originalCheckStable) {
-      const originalTick = appRef.tick.bind(appRef);
+    if (appRef['tick'] && !this.originalCheckStable) {
+      const originalTick = (appRef['tick'] as (...args: unknown[]) => unknown).bind(appRef);
       
-      appRef.tick = () => {
+      appRef['tick'] = () => {
         if (this._isMonitoring()) {
           this.onChangeDetectionStart();
         }
@@ -148,7 +148,7 @@ export class ChangeDetectionMonitorService {
 
   private setupZoneTaskHooks(): void {
     try {
-      const currentZone = (window as any).Zone?.current;
+      const currentZone = ((window as unknown as Record<string, unknown>)['Zone'] as Record<string, unknown>)?.['current'];
       
       if (currentZone) {
         // Monitor microtasks and macrotasks
@@ -161,7 +161,7 @@ export class ChangeDetectionMonitorService {
           }, 500);
         });
       }
-    } catch (error) {
+    } catch {
       // Fallback to simple monitoring
       this.ngZone.runOutsideAngular(() => {
         setInterval(() => {
@@ -252,9 +252,9 @@ export class ChangeDetectionMonitorService {
     
     // Restore original ApplicationRef.tick if we hooked it
     if (this.originalCheckStable) {
-      const appRef = this.applicationRef as any;
-      if (appRef.tick) {
-        appRef.tick = this.originalCheckStable;
+      const appRef = this.applicationRef as unknown as Record<string, unknown>;
+      if (appRef['tick']) {
+        appRef['tick'] = this.originalCheckStable;
       }
       this.originalCheckStable = undefined;
     }

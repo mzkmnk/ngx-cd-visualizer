@@ -313,17 +313,20 @@ describe('ComponentTreeService', () => {
   describe('Error Handling', () => {
     it('should handle null components array gracefully', () => {
       (mockApplicationRef as any).components = null;
-      expect(() => service.scanComponentTree()).toThrow();
+      expect(() => service.scanComponentTree()).not.toThrow();
+      expect(service.componentTree()).toEqual([]);
     });
 
     it('should handle undefined components gracefully', () => {
       (mockApplicationRef as any).components = undefined;
-      expect(() => service.scanComponentTree()).toThrow();
+      expect(() => service.scanComponentTree()).not.toThrow();
+      expect(service.componentTree()).toEqual([]);
     });
 
     it('should handle malformed component refs', () => {
       (mockApplicationRef as any).components = [{}]; // Invalid component ref
-      expect(() => service.scanComponentTree()).toThrow();
+      expect(() => service.scanComponentTree()).not.toThrow();
+      expect(service.componentTree()).toEqual([]);
     });
   });
 

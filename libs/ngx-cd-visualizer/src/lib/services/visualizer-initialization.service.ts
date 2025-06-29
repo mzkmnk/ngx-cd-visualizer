@@ -61,7 +61,7 @@ export class VisualizerInitializationService {
       const domElem = this.overlayRef.location.nativeElement;
       this.document.body.appendChild(domElem);
 
-    } catch (error) {
+    } catch {
       // Handle initialization errors gracefully
     }
   }
