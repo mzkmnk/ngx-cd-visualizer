@@ -185,22 +185,9 @@ export class ComponentTreeService {
     return false;
   }
 
-  private getChildComponents(componentRef: ComponentRef<any>): ComponentRef<any>[] {
-    const children: ComponentRef<any>[] = [];
-    
-    try {
-      // Access view hierarchy to find child components
-      const hostView = componentRef.hostView;
-      const viewRef = hostView as any;
-      
-      if (viewRef._view && viewRef._view.nodes) {
-        this.traverseViewNodes(viewRef._view.nodes, children);
-      }
-    } catch {
-      // Silently handle errors in view traversal
-    }
-
-    return children;
+  private getChildComponents(_componentRef: ComponentRef<any>): ComponentRef<any>[] {
+    // Child component detection implementation planned for Phase 2
+    return [];
   }
 
   private traverseViewNodes(nodes: any[], children: ComponentRef<any>[]): void {

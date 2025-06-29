@@ -2,20 +2,16 @@ import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { ChangeDetectionMonitorService } from './change-detection-monitor.service';
 import { ComponentTreeService } from './component-tree.service';
 import { CdVisualizerConfig } from '../models';
+import { NGX_CD_VISUALIZER_CONFIG, DEFAULT_CD_VISUALIZER_CONFIG } from '../tokens';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CdVisualizerService {
-  private readonly _config = signal<CdVisualizerConfig>({
-    enabled: true,
-    position: 'bottom-right',
-    theme: 'dark',
-    showOnlyChanges: false,
-    excludeComponents: [],
-    maxHistorySize: 1000,
-    debugMode: false
-  });
+  private readonly _injectedConfig = inject(NGX_CD_VISUALIZER_CONFIG, { optional: true });
+  private readonly _config = signal<CdVisualizerConfig>(
+    this._injectedConfig || DEFAULT_CD_VISUALIZER_CONFIG
+  );
 
   private readonly _isVisible = signal(true);
   private readonly _isMinimized = signal(false);

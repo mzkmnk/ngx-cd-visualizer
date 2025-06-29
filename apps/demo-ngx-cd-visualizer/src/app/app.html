@@ -1,2 +1,18 @@
-<app-nx-welcome></app-nx-welcome>
-<router-outlet></router-outlet>
+<div class="app-container">
+  <h1>ngx-cd-visualizer Demo</h1>
+  
+  <div class="demo-section">
+    <h2>Change Detection Test Components</h2>
+    <app-counter></app-counter>
+    <app-default-cd></app-default-cd>
+  </div>
+  
+  <div class="nx-welcome-section">
+    <app-nx-welcome></app-nx-welcome>
+  </div>
+  
+  <router-outlet></router-outlet>
+  
+  <!-- ngx-cd-visualizer Debug Panel -->
+  <app-debug-panel></app-debug-panel>
+</div>

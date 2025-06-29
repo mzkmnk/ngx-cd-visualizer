@@ -1,6 +1,5 @@
 import { Injectable, NgZone, signal, computed, inject } from '@angular/core';
 
-declare const Zone: any;
 declare interface Task {
   type: string;
   source: string;
@@ -87,34 +86,22 @@ export class ChangeDetectionMonitorService {
   }
 
   private setupZoneHooks(): void {
+    // Simplified Zone monitoring for Phase 1
+    // Full Zone.js hooks implementation planned for Phase 2
+    console.log('ChangeDetectionMonitorService: Monitoring started');
+    
     this.ngZone.runOutsideAngular(() => {
-      const originalOnInvokeTask = (Zone as any).current._zoneDelegate._invokeTask;
-      const originalOnScheduleTask = (Zone as any).current._zoneDelegate._scheduleTask;
-
-      (Zone as any).current._zoneDelegate._invokeTask = (zone: any, task: Task, ...args: any[]) => {
-        if (task.type === 'microTask' || task.type === 'macroTask') {
-          this.startCycle();
-        }
-        const result = originalOnInvokeTask.call(zone._zoneDelegate, zone, task, ...args);
-        if (task.type === 'microTask' || task.type === 'macroTask') {
-          this.endCycle();
-        }
-        return result;
-      };
-
-      (Zone as any).current._zoneDelegate._scheduleTask = (zone: any, task: Task) => {
-        const result = originalOnScheduleTask.call(zone._zoneDelegate, zone, task);
+      setInterval(() => {
         if (this._isMonitoring()) {
-          this.detectTriggerType(task);
+          this.startCycle();
+          setTimeout(() => this.endCycle(), 100);
         }
-        return result;
-      };
+      }, 1000);
     });
   }
 
   private cleanupZoneHooks(): void {
-    // Zone hooks cleanup would be implemented here
-    // For now, we'll rely on the monitoring flag
+    // Zone hooks cleanup implementation planned for Phase 2
   }
 
   private detectTriggerType(task: Task): ChangeDetectionTrigger {
