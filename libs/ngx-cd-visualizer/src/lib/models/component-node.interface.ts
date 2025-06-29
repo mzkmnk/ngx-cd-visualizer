@@ -1,11 +1,14 @@
 import { ComponentRef, Type } from '@angular/core';
 
-export interface ComponentNode {
+/**
+ * Represents a component in the Angular component tree
+ */
+export interface ComponentNode<T = object> {
   id: string;
   name: string;
   selector: string;
-  componentRef: ComponentRef<any>;
-  componentType: Type<any>;
+  componentRef: ComponentRef<T>;
+  componentType: Type<T>;
   parent: ComponentNode | null;
   children: ComponentNode[];
   isOnPushStrategy: boolean;

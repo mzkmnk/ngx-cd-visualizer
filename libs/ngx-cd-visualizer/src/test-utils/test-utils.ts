@@ -23,7 +23,7 @@ export function createMockComponentNode(overrides: Partial<ComponentNode> = {}):
     id: 'test-node-1',
     name: 'TestComponent',
     selector: 'app-test',
-    componentRef: createMockComponentRef() as unknown as ComponentRef<unknown>,
+    componentRef: createMockComponentRef() as unknown as ComponentRef<object>,
     componentType: MockComponent,
     parent: null,
     children: [],
@@ -91,12 +91,12 @@ export class MockOnPushComponent implements TestComponentClass {
  * Creates a mock ApplicationRef for testing
  */
 export function createMockApplicationRef(): MockApplicationRef {
-  const mockComponents: ComponentRef<unknown>[] = [createMockComponentRef() as unknown as ComponentRef<unknown>];
+  const mockComponents: ComponentRef<object>[] = [createMockComponentRef() as unknown as ComponentRef<object>];
   return {
     get components() {
       return mockComponents;
     },
-    set components(value: ComponentRef<unknown>[]) {
+    set components(value: ComponentRef<object>[]) {
       mockComponents.length = 0;
       if (value) {
         mockComponents.push(...value);

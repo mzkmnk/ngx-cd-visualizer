@@ -50,7 +50,7 @@ export interface MockComponentRef<T = object> {
 
 // Mock ApplicationRef type
 export interface MockApplicationRef {
-  components: ComponentRef<unknown>[];
+  components: ComponentRef<object>[];
   tick: jest.Mock;
   attachView: jest.Mock;
   detachView: jest.Mock;

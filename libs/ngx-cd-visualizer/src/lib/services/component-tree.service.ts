@@ -1,5 +1,31 @@
-import { Injectable, ApplicationRef, ComponentRef, signal, computed, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Injectable, ApplicationRef, ComponentRef, signal, computed, ChangeDetectionStrategy, Type } from '@angular/core';
 import { ComponentNode, ComponentTreeSnapshot } from '../models';
+
+/**
+ * Interface for ViewNode structure in Angular's internal implementation
+ */
+interface ViewNode {
+  componentView?: {
+    component?: object;
+    ref?: ComponentRef<object>;
+  };
+  childNodes?: ViewNode[];
+}
+
+/**
+ * Interface for component annotations metadata
+ */
+interface ComponentAnnotation {
+  selector?: string;
+  changeDetection?: ChangeDetectionStrategy;
+}
+
+/**
+ * Interface for component type with metadata
+ */
+interface ComponentTypeWithMetadata extends Type<object> {
+  __annotations__?: ComponentAnnotation[];
+}
 
 @Injectable({
   providedIn: 'root'
@@ -18,7 +44,8 @@ export class ComponentTreeService {
     this._componentTree().filter(node => node.isOnPushStrategy).length
   );
 
-  private applicationRef = inject(ApplicationRef);
+  // eslint-disable-next-line @angular-eslint/prefer-inject
+  constructor(private applicationRef: ApplicationRef) {}
 
   scanComponentTree(): void {
     if (this._isScanning()) return;
@@ -109,16 +136,21 @@ export class ComponentTreeService {
     this._componentTree.set(updatedNodes);
   }
 
-  private buildComponentNode(
-    componentRef: ComponentRef<any>, 
+  private buildComponentNode<T extends object = object>(
+    componentRef: ComponentRef<T>, 
     parent: ComponentNode | null, 
     depth: number
-  ): ComponentNode {
+  ): ComponentNode<T> {
+    // Guard against invalid component ref
+    if (!componentRef || !componentRef.componentType) {
+      throw new Error('Invalid component reference provided');
+    }
+
     const componentType = componentRef.componentType;
     const selector = this.getComponentSelector(componentType);
     const isOnPushStrategy = this.isOnPushComponent(componentRef);
 
-    const node: ComponentNode = {
+    const node: ComponentNode<T> = {
       id: this.generateNodeId(),
       name: componentType.name || 'Unknown',
       selector: selector,
@@ -142,10 +174,15 @@ export class ComponentTreeService {
     return node;
   }
 
-  private getComponentSelector(componentType: any): string {
+  private getComponentSelector(componentType: Type<object>): string {
+    // Guard against invalid component type
+    if (!componentType) {
+      return '<unknown>';
+    }
+
     // Try to get selector from component metadata
     try {
-      const annotations = (componentType as any).__annotations__ || [];
+      const annotations = (componentType as ComponentTypeWithMetadata).__annotations__ || [];
       for (const annotation of annotations) {
         if (annotation.selector) {
           return annotation.selector;
@@ -159,10 +196,10 @@ export class ComponentTreeService {
     return componentType.name ? `<${this.camelToKebab(componentType.name)}>` : '<unknown>';
   }
 
-  private isOnPushComponent(componentRef: ComponentRef<any>): boolean {
+  private isOnPushComponent<T extends object>(componentRef: ComponentRef<T>): boolean {
     try {
       const componentType = componentRef.componentType;
-      const annotations = (componentType as any).__annotations__ || [];
+      const annotations = (componentType as ComponentTypeWithMetadata).__annotations__ || [];
       for (const annotation of annotations) {
         if (annotation.changeDetection === ChangeDetectionStrategy.OnPush) {
           return true;
@@ -174,12 +211,12 @@ export class ComponentTreeService {
     return false;
   }
 
-  private getChildComponents(_componentRef: ComponentRef<any>): ComponentRef<any>[] {
+  private getChildComponents(_componentRef: ComponentRef<object>): ComponentRef<object>[] {
     // Child component detection implementation planned for Phase 2
     return [];
   }
 
-  private traverseViewNodes(nodes: any[], children: ComponentRef<any>[]): void {
+  private traverseViewNodes(nodes: ViewNode[], children: ComponentRef<object>[]): void {
     for (const node of nodes) {
       if (node.componentView && node.componentView.component) {
         // This is a component node
