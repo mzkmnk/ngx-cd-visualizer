@@ -1,6 +1,6 @@
 import { Provider, APP_INITIALIZER } from '@angular/core';
-import { CdVisualizerConfig } from '../models';
-import { NGX_CD_VISUALIZER_CONFIG, DEFAULT_CD_VISUALIZER_CONFIG } from '../tokens';
+import { CdVisualizerConfig, DEFAULT_CD_VISUALIZER_CONFIG } from '../models';
+import { NGX_CD_VISUALIZER_CONFIG } from '../tokens';
 import { VisualizerInitializationService } from '../services/visualizer-initialization.service';
 
 export function provideNgxCdVisualizer(config?: Partial<CdVisualizerConfig>): Provider[] {

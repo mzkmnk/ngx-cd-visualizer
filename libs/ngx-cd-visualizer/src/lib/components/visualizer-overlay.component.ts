@@ -10,7 +10,9 @@ import {
 import { CommonModule } from '@angular/common';
 import { ComponentTreeService } from '../services/component-tree.service';
 import { CdVisualizerService } from '../services/cd-visualizer.service';
-import { ComponentTreeComponent } from './component-tree.component';
+import { EnhancedTreeComponent } from './enhanced-tree.component';
+import { VisualizerToolbarComponent } from './visualizer-toolbar.component';
+import { FilterMode, VisualizerThemeType } from '../models';
 
 /**
  * Main overlay window component that provides draggable UI for CD visualization
@@ -58,26 +60,37 @@ import { ComponentTreeComponent } from './component-tree.component';
       <!-- Content -->
       @if (!isMinimized()) {
         <div class="cd-visualizer-content">
-          <div class="toolbar">
-            <button 
-              class="scan-btn"
-              (click)="scanComponents()"
-              [disabled]="isScanning()">
-              {{isScanning() ? 'Scanning...' : 'Scan Tree'}}
-            </button>
-            <button 
-              class="reset-btn"
-              (click)="resetActivity()">
-              Reset Activity
-            </button>
-          </div>
+          <!-- Enhanced Toolbar -->
+          <lib-visualizer-toolbar
+            [filterMode]="filterMode()"
+            [isScanning]="isScanning()"
+            [componentCount]="componentCount()"
+            [onPushCount]="onPushCount()"
+            [showTimestamps]="showTimestamps()"
+            [showCounts]="showCounts()"
+            [compact]="compactView()"
+            [theme]="currentTheme()"
+            (filterChange)="setFilterMode($event)"
+            (scanComponents)="scanComponents()"
+            (resetActivity)="resetActivity()"
+            (timestampsToggle)="toggleTimestamps($event)"
+            (countsToggle)="toggleCounts($event)"
+            (compactToggle)="toggleCompactView($event)"
+            (themeChange)="setTheme($event)">
+          </lib-visualizer-toolbar>
           
-          <lib-component-tree 
+          <!-- Enhanced Tree -->
+          <lib-enhanced-tree 
             [nodes]="rootComponents()"
             [expandedNodes]="expandedNodes()"
+            [selectedNode]="selectedNode()"
+            [compact]="compactView()"
+            [showCounts]="showCounts()"
+            [showTimestamps]="showTimestamps()"
+            [filterMode]="filterMode()"
             (nodeToggle)="toggleNode($event)"
             (nodeSelect)="selectNode($event)">
-          </lib-component-tree>
+          </lib-enhanced-tree>
         </div>
       }
     </div>
@@ -218,7 +231,7 @@ import { ComponentTreeComponent } from './component-tree.component';
       }
     }
   `],
-  imports: [CommonModule, ComponentTreeComponent],
+  imports: [CommonModule, EnhancedTreeComponent, VisualizerToolbarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class VisualizerOverlayComponent {
@@ -233,6 +246,13 @@ export class VisualizerOverlayComponent {
   private readonly _position = signal({ x: 20, y: 20 });
   private readonly _expandedNodes = signal<Set<string>>(new Set());
   private readonly _selectedNode = signal<string | null>(null);
+  
+  // UI configuration signals
+  private readonly _filterMode = signal<FilterMode>('all');
+  private readonly _showTimestamps = signal(true);
+  private readonly _showCounts = signal(true);
+  private readonly _compactView = signal(false);
+  private readonly _currentTheme = signal<VisualizerThemeType>('auto');
 
   // Computed properties
   readonly isMinimized = this._isMinimized.asReadonly();
@@ -240,6 +260,13 @@ export class VisualizerOverlayComponent {
   readonly position = this._position.asReadonly();
   readonly expandedNodes = this._expandedNodes.asReadonly();
   readonly selectedNode = this._selectedNode.asReadonly();
+  
+  // UI configuration computed properties
+  readonly filterMode = this._filterMode.asReadonly();
+  readonly showTimestamps = this._showTimestamps.asReadonly();
+  readonly showCounts = this._showCounts.asReadonly();
+  readonly compactView = this._compactView.asReadonly();
+  readonly currentTheme = this._currentTheme.asReadonly();
 
   // Component tree data
   readonly componentCount = this.componentTreeService.componentCount;
@@ -298,6 +325,27 @@ export class VisualizerOverlayComponent {
 
   selectNode(nodeId: string): void {
     this._selectedNode.set(nodeId);
+  }
+
+  // New methods for toolbar functionality
+  setFilterMode(mode: FilterMode): void {
+    this._filterMode.set(mode);
+  }
+
+  toggleTimestamps(show: boolean): void {
+    this._showTimestamps.set(show);
+  }
+
+  toggleCounts(show: boolean): void {
+    this._showCounts.set(show);
+  }
+
+  toggleCompactView(compact: boolean): void {
+    this._compactView.set(compact);
+  }
+
+  setTheme(theme: VisualizerThemeType): void {
+    this._currentTheme.set(theme);
   }
 
   startDrag(event: MouseEvent): void {

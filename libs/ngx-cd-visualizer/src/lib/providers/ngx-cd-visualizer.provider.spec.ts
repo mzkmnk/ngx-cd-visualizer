@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { Provider } from '@angular/core';
 import { provideNgxCdVisualizer } from './ngx-cd-visualizer.provider';
-import { NGX_CD_VISUALIZER_CONFIG, DEFAULT_CD_VISUALIZER_CONFIG } from '../tokens';
-import { CdVisualizerConfig } from '../models';
+import { NGX_CD_VISUALIZER_CONFIG } from '../tokens';
+import { CdVisualizerConfig, DEFAULT_CD_VISUALIZER_CONFIG } from '../models';
 
 describe('provideNgxCdVisualizer', () => {
   describe('Provider Function', () => {
