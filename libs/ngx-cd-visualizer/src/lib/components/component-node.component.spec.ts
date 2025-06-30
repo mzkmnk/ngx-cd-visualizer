@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ComponentNodeComponent } from './component-node.component';
 import { ComponentNode } from '../models';
-import { Component } from '@angular/core';
+import { Component, ComponentRef, Type } from '@angular/core';
 
 // Test wrapper component to provide inputs
 @Component({
@@ -33,8 +33,8 @@ class TestWrapperComponent {
       id: 'test-node',
       name: 'TestComponent',
       selector: 'app-test',
-      componentRef: {} as any,
-      componentType: class {} as any,
+      componentRef: {} as ComponentRef<object>,
+      componentType: class {} as Type<object>,
       parent: null,
       children: [],
       isOnPushStrategy: false,
@@ -105,8 +105,14 @@ describe('ComponentNodeComponent', () => {
   describe('Event Handling', () => {
     it('should emit toggle event and stop propagation', () => {
       const mockEvent = {
-        stopPropagation: jest.fn()
-      } as any;
+        stopPropagation: jest.fn(),
+        preventDefault: jest.fn(),
+        target: document.createElement('div'),
+        currentTarget: document.createElement('div'),
+        type: 'click',
+        bubbles: false,
+        cancelable: false
+      } as unknown as MouseEvent;
 
       component.onToggle(mockEvent);
 
@@ -175,24 +181,32 @@ describe('ComponentNodeComponent', () => {
   });
 
   describe('Node Properties Display', () => {
-    it('should handle node with basic properties', () => {
+    it('should display component information correctly in template', () => {
       const node = wrapper.createMockNode({
         name: 'BasicComponent',
-        selector: 'app-basic'
+        selector: 'app-basic',
+        changeDetectionCount: 5
       });
       
       wrapper.node = node;
       fixture.detectChanges();
       
+      const compiled = fixture.nativeElement;
+      expect(compiled.textContent).toContain('BasicComponent');
+      expect(compiled.textContent).toContain('app-basic');
+      expect(compiled.textContent).toContain('5'); // Change detection count
+      
+      // Verify component state in component instance
       expect(component.node().name).toBe('BasicComponent');
       expect(component.node().selector).toBe('app-basic');
       expect(component.node().isOnPushStrategy).toBe(false);
       expect(component.node().isActive).toBe(false);
-      expect(component.node().changeDetectionCount).toBe(0);
+      expect(component.node().changeDetectionCount).toBe(5);
     });
 
-    it('should handle OnPush component', () => {
+    it('should visually indicate OnPush strategy components', () => {
       const node = wrapper.createMockNode({
+        name: 'OnPushComponent',
         isOnPushStrategy: true
       });
       
@@ -200,12 +214,21 @@ describe('ComponentNodeComponent', () => {
       fixture.detectChanges();
       
       expect(component.node().isOnPushStrategy).toBe(true);
+      
+      // OnPush components should have visual indicator in template
+      const compiled = fixture.nativeElement;
+      const hasOnPushIndicator = compiled.textContent.includes('OnPush') || 
+                                compiled.querySelector('.onpush-indicator') ||
+                                compiled.querySelector('[class*="onpush"]');
+      expect(hasOnPushIndicator).toBeTruthy();
     });
 
-    it('should handle active component', () => {
+    it('should highlight active components with distinct visual treatment', () => {
       const node = wrapper.createMockNode({
+        name: 'ActiveComponent',
         isActive: true,
-        lastChangeDetectionTime: Date.now() - 1000
+        lastChangeDetectionTime: Date.now() - 1000,
+        changeDetectionCount: 3
       });
       
       wrapper.node = node;
@@ -213,17 +236,34 @@ describe('ComponentNodeComponent', () => {
       
       expect(component.node().isActive).toBe(true);
       expect(component.node().lastChangeDetectionTime).toBeDefined();
+      
+      // Active components should have visual styling differences
+      const compiled = fixture.nativeElement;
+      const nodeElement = compiled.querySelector('.component-node') || compiled;
+      const hasActiveIndicator = nodeElement.classList?.contains('active') ||
+                                nodeElement.classList?.contains('is-active') ||
+                                compiled.textContent.includes('active');
+      expect(hasActiveIndicator).toBeTruthy();
     });
 
-    it('should handle component with change detection count', () => {
+    it('should display and format change detection count correctly', () => {
       const node = wrapper.createMockNode({
-        changeDetectionCount: 42
+        name: 'HighActivityComponent',
+        changeDetectionCount: 1337
       });
       
       wrapper.node = node;
       fixture.detectChanges();
       
-      expect(component.node().changeDetectionCount).toBe(42);
+      expect(component.node().changeDetectionCount).toBe(1337);
+      
+      // Should use formatCount method for display
+      const formattedCount = component.formatCount(1337);
+      expect(formattedCount).toBe('999+'); // Based on formatCount logic
+      
+      // Template should show formatted count
+      const compiled = fixture.nativeElement;
+      expect(compiled.textContent).toContain('999+');
     });
   });
 

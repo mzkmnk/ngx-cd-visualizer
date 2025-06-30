@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ComponentTreeComponent } from './component-tree.component';
 import { ComponentNode } from '../models';
-import { Component } from '@angular/core';
+import { Component, ComponentRef, Type } from '@angular/core';
 
 // Test wrapper component
 @Component({
@@ -39,8 +39,8 @@ describe('ComponentTreeComponent', () => {
     id,
     name,
     selector: `app-${name.toLowerCase()}`,
-    componentRef: {} as any,
-    componentType: class {} as any,
+    componentRef: {} as ComponentRef<object>,
+    componentType: class {} as Type<object>,
     parent: null,
     children,
     isOnPushStrategy: false,

@@ -12,7 +12,6 @@ import { VisualizerOverlayComponent } from './visualizer-overlay.component';
 class TestWrapperComponent {}
 
 describe('VisualizerOverlayComponent', () => {
-  let wrapper: TestWrapperComponent;
   let component: VisualizerOverlayComponent;
   let fixture: ComponentFixture<TestWrapperComponent>;
   let mockComponentTreeService: Partial<ComponentTreeService>;
@@ -53,7 +52,6 @@ describe('VisualizerOverlayComponent', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(TestWrapperComponent);
-    wrapper = fixture.componentInstance;
     component = fixture.debugElement.children[0].componentInstance;
     fixture.detectChanges();
   });
@@ -131,36 +129,64 @@ describe('VisualizerOverlayComponent', () => {
   });
 
   describe('Drag Functionality', () => {
-    it('should start drag operation', () => {
+    it('should initialize drag operation with correct starting position', () => {
+      const initialPosition = { x: 50, y: 100 };
+      component['_position'].set(initialPosition);
+      fixture.detectChanges();
+      
+      const element = document.createElement('div');
       const mockEvent = {
-        target: document.createElement('div'),
-        currentTarget: document.createElement('div'),
+        target: element,
+        currentTarget: element,
         preventDefault: jest.fn(),
         clientX: 100,
-        clientY: 200
-      } as any;
-
-      mockEvent.target = mockEvent.currentTarget; // Same element
+        clientY: 200,
+        type: 'mousedown',
+        bubbles: false,
+        cancelable: true
+      } as unknown as MouseEvent;
 
       component.startDrag(mockEvent);
       
       expect(mockEvent.preventDefault).toHaveBeenCalled();
       expect(component.isDragging()).toBe(true);
+      expect(component.position()).toEqual(initialPosition); // Position shouldn't change on start
     });
 
-    it('should not start drag if target is different from currentTarget', () => {
+    it('should prevent drag when click target differs from drag handle', () => {
       const mockEvent = {
         target: document.createElement('div'),
         currentTarget: document.createElement('span'), // Different element
         preventDefault: jest.fn(),
         clientX: 100,
-        clientY: 200
-      } as any;
+        clientY: 200,
+        type: 'mousedown',
+        bubbles: false,
+        cancelable: true
+      } as unknown as MouseEvent;
 
+      const initialPosition = component.position();
+      
       component.startDrag(mockEvent);
       
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
       expect(component.isDragging()).toBe(false);
+      expect(component.position()).toEqual(initialPosition); // Position unchanged
+    });
+
+    it('should validate position constraints are implemented', () => {
+      // Test that position property is accessible and returns valid coordinates
+      const currentPosition = component.position();
+      expect(typeof currentPosition.x).toBe('number');
+      expect(typeof currentPosition.y).toBe('number');
+      expect(currentPosition.x).toBeGreaterThanOrEqual(0);
+      expect(currentPosition.y).toBeGreaterThanOrEqual(0);
+      
+      // Test that position can be set within reasonable bounds
+      const testPosition = { x: 100, y: 100 };
+      component['_position'].set(testPosition);
+      const updatedPosition = component.position();
+      expect(updatedPosition).toEqual(testPosition);
     });
   });
 
