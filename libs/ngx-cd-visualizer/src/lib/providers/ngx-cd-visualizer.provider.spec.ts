@@ -9,7 +9,7 @@ describe('provideNgxCdVisualizer', () => {
     it('should provide default configuration when no config is passed', () => {
       const providers = provideNgxCdVisualizer();
       
-      expect(providers).toHaveLength(1);
+      expect(providers).toHaveLength(2);
       expect((providers[0] as Provider & { provide: unknown; useValue: unknown }).provide).toBe(NGX_CD_VISUALIZER_CONFIG);
       expect((providers[0] as Provider & { provide: unknown; useValue: unknown }).useValue).toEqual(DEFAULT_CD_VISUALIZER_CONFIG);
     });

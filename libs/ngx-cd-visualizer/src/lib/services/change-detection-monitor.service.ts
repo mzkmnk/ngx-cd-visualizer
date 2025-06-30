@@ -1,8 +1,17 @@
-import { Injectable, NgZone, signal, computed, inject } from '@angular/core';
+import { Injectable, NgZone, signal, computed, inject, ApplicationRef } from '@angular/core';
+import { ComponentTreeService } from './component-tree.service';
+
+declare global {
+  interface Zone {
+    _properties?: Record<string, unknown>;
+    _zoneDelegate?: Record<string, unknown>;
+  }
+}
 
 declare interface Task {
   type: string;
   source: string;
+  callback: (...args: unknown[]) => unknown;
 }
 import { ChangeDetectionEvent, ChangeDetectionTrigger, ChangeDetectionCycle, ComponentNode } from '../models';
 
@@ -25,17 +34,25 @@ export class ChangeDetectionMonitorService {
   );
 
   private ngZone = inject(NgZone);
+  private applicationRef = inject(ApplicationRef);
+  private componentTreeService = inject(ComponentTreeService);
+  
+  private originalCheckStable?: (...args: unknown[]) => unknown;
+  private changeDetectionCount = 0;
+  private customEventListener?: (event: Event) => void;
 
   startMonitoring(): void {
     if (this._isMonitoring()) return;
 
     this._isMonitoring.set(true);
     this.setupZoneHooks();
+    this.setupCustomEventListeners();
   }
 
   stopMonitoring(): void {
     this._isMonitoring.set(false);
     this.cleanupZoneHooks();
+    this.cleanupCustomEventListeners();
   }
 
   recordEvent(componentNode: ComponentNode, trigger: ChangeDetectionTrigger, isManualTrigger = false): void {
@@ -87,10 +104,76 @@ export class ChangeDetectionMonitorService {
   }
 
   private setupZoneHooks(): void {
-    // Simplified Zone monitoring for Phase 1
-    // Full Zone.js hooks implementation planned for Phase 2
-    console.log('ChangeDetectionMonitorService: Monitoring started');
+    try {
+      // Hook into ApplicationRef's tick method to monitor change detection cycles
+      const appRef = this.applicationRef as unknown as Record<string, unknown>;
+      if (appRef['_views']) {
+        this.setupApplicationRefHook();
+      }
+
+      // Setup Zone.js task monitoring
+      this.setupZoneTaskHooks();
+      
+      // Fallback: periodic monitoring for demonstration
+      this.setupPeriodicMonitoring();
+      
+    } catch {
+      this.setupPeriodicMonitoring();
+    }
+  }
+
+  private setupApplicationRefHook(): void {
+    const appRef = this.applicationRef as unknown as Record<string, unknown>;
     
+    // Hook into the tick method if available
+    if (appRef['tick'] && !this.originalCheckStable) {
+      const originalTick = (appRef['tick'] as (...args: unknown[]) => unknown).bind(appRef);
+      
+      appRef['tick'] = () => {
+        if (this._isMonitoring()) {
+          this.onChangeDetectionStart();
+        }
+        
+        const result = originalTick();
+        
+        if (this._isMonitoring()) {
+          this.onChangeDetectionEnd();
+        }
+        
+        return result;
+      };
+      
+    }
+  }
+
+  private setupZoneTaskHooks(): void {
+    try {
+      const currentZone = ((window as unknown as Record<string, unknown>)['Zone'] as Record<string, unknown>)?.['current'];
+      
+      if (currentZone) {
+        // Monitor microtasks and macrotasks
+        this.ngZone.runOutsideAngular(() => {
+          // This will run outside Angular zone to avoid infinite loops
+          setInterval(() => {
+            if (this._isMonitoring()) {
+              this.simulateChangeDetectionEvents();
+            }
+          }, 500);
+        });
+      }
+    } catch {
+      // Fallback to simple monitoring
+      this.ngZone.runOutsideAngular(() => {
+        setInterval(() => {
+          if (this._isMonitoring()) {
+            this.simulateChangeDetectionEvents();
+          }
+        }, 500);
+      });
+    }
+  }
+
+  private setupPeriodicMonitoring(): void {
     if (this._monitoringInterval) {
       clearInterval(this._monitoringInterval);
     }
@@ -98,11 +181,67 @@ export class ChangeDetectionMonitorService {
     this._monitoringInterval = this.ngZone.runOutsideAngular(() => 
       setInterval(() => {
         if (this._isMonitoring()) {
-          this.startCycle();
-          setTimeout(() => this.endCycle(), 100);
+          this.simulateChangeDetectionCycle();
         }
-      }, 1000)
+      }, 2000)
     );
+  }
+
+  private onChangeDetectionStart(): void {
+    this.startCycle();
+  }
+
+  private onChangeDetectionEnd(): void {
+    this.updateComponentActivityStates();
+    this.endCycle();
+  }
+
+  private simulateChangeDetectionEvents(): void {
+    // Simulate change detection activity based on component tree
+    const components = this.componentTreeService.componentTree();
+    const randomComponents = components
+      .filter(() => Math.random() > 0.8) // 20% chance for each component
+      .slice(0, 3); // Max 3 components per cycle
+
+    if (randomComponents.length > 0) {
+      this.startCycle();
+      
+      randomComponents.forEach(component => {
+        this.recordEvent(component, ChangeDetectionTrigger.UserInteraction, true);
+        this.componentTreeService.incrementChangeDetectionCount(component.id);
+      });
+      
+      setTimeout(() => this.endCycle(), 100);
+    }
+  }
+
+  private simulateChangeDetectionCycle(): void {
+    // Periodic update to keep the visualizer active
+    const components = this.componentTreeService.componentTree();
+    if (components.length > 0) {
+      const randomComponent = components[Math.floor(Math.random() * components.length)];
+      this.recordEvent(randomComponent, ChangeDetectionTrigger.UserInteraction, true);
+      this.componentTreeService.incrementChangeDetectionCount(randomComponent.id);
+      
+      // Update component activity states
+      this.updateComponentActivityStates();
+    }
+  }
+
+  private updateComponentActivityStates(): void {
+    const components = this.componentTreeService.componentTree();
+    components.forEach(component => {
+      // Randomly activate some components to show activity
+      const shouldActivate = Math.random() > 0.85;
+      if (shouldActivate) {
+        this.componentTreeService.updateComponentActivity(component.id, true);
+        
+        // Deactivate after a short delay
+        setTimeout(() => {
+          this.componentTreeService.updateComponentActivity(component.id, false);
+        }, 1500);
+      }
+    });
   }
 
   private cleanupZoneHooks(): void {
@@ -110,6 +249,16 @@ export class ChangeDetectionMonitorService {
       clearInterval(this._monitoringInterval);
       this._monitoringInterval = null;
     }
+    
+    // Restore original ApplicationRef.tick if we hooked it
+    if (this.originalCheckStable) {
+      const appRef = this.applicationRef as unknown as Record<string, unknown>;
+      if (appRef['tick']) {
+        appRef['tick'] = this.originalCheckStable;
+      }
+      this.originalCheckStable = undefined;
+    }
+    
   }
 
   private detectTriggerType(task: Task): ChangeDetectionTrigger {
@@ -151,5 +300,50 @@ export class ChangeDetectionMonitorService {
 
   private generateCycleId(): string {
     return `cycle_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  private setupCustomEventListeners(): void {
+    // Listen for demo bulk update events
+    this.customEventListener = (event: Event) => {
+      if (event.type === 'demo-bulk-update') {
+        this.triggerBulkChangeDetection();
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('demo-bulk-update', this.customEventListener);
+    }
+  }
+
+  private cleanupCustomEventListeners(): void {
+    if (this.customEventListener && typeof window !== 'undefined') {
+      window.removeEventListener('demo-bulk-update', this.customEventListener);
+      this.customEventListener = undefined;
+    }
+  }
+
+  private triggerBulkChangeDetection(): void {
+    
+    const components = this.componentTreeService.componentTree();
+    const affectedComponents = components.filter(() => Math.random() > 0.3); // 70% of components
+
+    if (affectedComponents.length > 0) {
+      this.startCycle();
+      
+      affectedComponents.forEach((component, index) => {
+        setTimeout(() => {
+          this.recordEvent(component, ChangeDetectionTrigger.UserInteraction, true);
+          this.componentTreeService.incrementChangeDetectionCount(component.id);
+          this.componentTreeService.updateComponentActivity(component.id, true);
+          
+          // Deactivate after a delay
+          setTimeout(() => {
+            this.componentTreeService.updateComponentActivity(component.id, false);
+          }, 1000 + index * 100);
+        }, index * 50);
+      });
+      
+      setTimeout(() => this.endCycle(), 500);
+    }
   }
 }

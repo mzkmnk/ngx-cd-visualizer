@@ -1,15 +1,29 @@
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { NxWelcome } from './nx-welcome';
-import { CounterComponent } from './test-components/counter.component';
-import { DefaultCdComponent } from './test-components/default-cd.component';
-import { DebugPanelComponent } from './test-components/debug-panel.component';
+import { NavigationComponent } from './components/navigation.component';
 
 @Component({
-  imports: [NxWelcome, RouterModule, CounterComponent, DefaultCdComponent, DebugPanelComponent],
+  imports: [RouterModule, NavigationComponent],
   selector: 'app-root',
-  templateUrl: './app.html',
-  styleUrl: './app.css',
+  template: `
+    <div class="app-layout">
+      <app-navigation></app-navigation>
+      <main class="main-content">
+        <router-outlet></router-outlet>
+      </main>
+    </div>
+  `,
+  styles: [`
+    .app-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .main-content {
+      flex: 1;
+      background: #f8fafc;
+    }
+  `]
 })
 export class App {
   protected title = 'demo-ngx-cd-visualizer';
