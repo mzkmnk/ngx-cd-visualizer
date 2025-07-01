@@ -7,6 +7,7 @@ export interface ComponentNode<T = object> {
   id: string;
   name: string;
   selector: string;
+  type: string;
   componentRef: ComponentRef<T>;
   componentType: Type<T>;
   parent: ComponentNode | null;

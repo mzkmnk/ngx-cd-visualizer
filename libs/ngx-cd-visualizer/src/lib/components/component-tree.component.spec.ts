@@ -39,6 +39,7 @@ describe('ComponentTreeComponent', () => {
     id,
     name,
     selector: `app-${name.toLowerCase()}`,
+    type: 'component',
     componentRef: {} as ComponentRef<object>,
     componentType: class {} as Type<object>,
     parent: null,

@@ -37,6 +37,7 @@ class TestWrapperComponent {
       id: 'test-node',
       name: 'TestComponent',
       selector: 'app-test',
+      type: 'component',
       componentRef: {} as ComponentRef<object>,
       componentType: class {} as Type<object>,
       parent: null,

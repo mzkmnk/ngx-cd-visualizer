@@ -4,6 +4,17 @@ import { ComponentTreeService } from '../services/component-tree.service';
 import { CdVisualizerService } from '../services/cd-visualizer.service';
 import { VisualizerOverlayComponent } from './visualizer-overlay.component';
 
+// Mock d3 module
+jest.mock('d3', () => ({
+  select: jest.fn(),
+  zoom: jest.fn(),
+  forceSimulation: jest.fn(),
+  forceLink: jest.fn(),
+  forceManyBody: jest.fn(),
+  forceCollide: jest.fn(),
+  zoomIdentity: {}
+}));
+
 // Test wrapper component
 @Component({
   template: `<lib-visualizer-overlay></lib-visualizer-overlay>`,
