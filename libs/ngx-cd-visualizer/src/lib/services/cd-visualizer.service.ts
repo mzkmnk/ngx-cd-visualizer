@@ -1,8 +1,8 @@
 import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { ChangeDetectionMonitorService } from './change-detection-monitor.service';
 import { ComponentTreeService } from './component-tree.service';
-import { CdVisualizerConfig } from '../models';
-import { NGX_CD_VISUALIZER_CONFIG, DEFAULT_CD_VISUALIZER_CONFIG } from '../tokens';
+import { CdVisualizerConfig, DEFAULT_CD_VISUALIZER_CONFIG } from '../models';
+import { NGX_CD_VISUALIZER_CONFIG } from '../tokens';
 
 @Injectable({
   providedIn: 'root'

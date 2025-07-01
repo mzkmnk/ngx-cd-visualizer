@@ -1,8 +1,22 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Component, signal } from '@angular/core';
+import { Component, signal, ApplicationRef } from '@angular/core';
 import { ComponentTreeService } from '../services/component-tree.service';
 import { CdVisualizerService } from '../services/cd-visualizer.service';
+import { ChangeDetectionMonitorService } from '../services/change-detection-monitor.service';
+import { NGX_CD_VISUALIZER_CONFIG } from '../tokens';
+import { DEFAULT_CD_VISUALIZER_CONFIG } from '../models';
 import { VisualizerOverlayComponent } from './visualizer-overlay.component';
+
+// Mock d3 module
+jest.mock('d3', () => ({
+  select: jest.fn(),
+  zoom: jest.fn(),
+  forceSimulation: jest.fn(),
+  forceLink: jest.fn(),
+  forceManyBody: jest.fn(),
+  forceCollide: jest.fn(),
+  zoomIdentity: {}
+}));
 
 // Test wrapper component
 @Component({
@@ -16,6 +30,8 @@ describe('VisualizerOverlayComponent', () => {
   let fixture: ComponentFixture<TestWrapperComponent>;
   let mockComponentTreeService: Partial<ComponentTreeService>;
   let mockCdVisualizerService: Partial<CdVisualizerService>;
+  let mockChangeDetectionMonitorService: Partial<ChangeDetectionMonitorService>;
+  let mockApplicationRef: Partial<ApplicationRef>;
 
   beforeEach(async () => {
     // Mock window dimensions for consistent positioning
@@ -35,19 +51,60 @@ describe('VisualizerOverlayComponent', () => {
       onPushComponentCount: signal(0),
       isScanning: signal(false),
       rootComponents: signal([]),
+      componentTree: signal([]),
       scanComponentTree: jest.fn(),
-      resetActivityStates: jest.fn()
+      resetActivityStates: jest.fn(),
+      findComponentById: jest.fn(),
+      findComponentBySelector: jest.fn(),
+      findComponentsByName: jest.fn(),
+      getComponentPath: jest.fn(),
+      updateComponentActivity: jest.fn(),
+      incrementChangeDetectionCount: jest.fn(),
+      createSnapshot: jest.fn()
     };
 
     mockCdVisualizerService = {
-      hide: jest.fn()
+      hide: jest.fn(),
+      show: jest.fn(),
+      toggle: jest.fn(),
+      minimize: jest.fn(),
+      updateConfig: jest.fn(),
+      startMonitoring: jest.fn(),
+      stopMonitoring: jest.fn(),
+      config: signal({
+        enabled: true,
+        position: 'bottom-right' as const,
+        theme: 'auto' as const,
+        showOnlyChanges: false,
+        excludeComponents: []
+      }),
+      isVisible: signal(true),
+      isMinimized: signal(false),
+      componentTree: signal([]),
+      activeChanges: signal([]),
+      isMonitoring: signal(false),
+      filteredComponentTree: signal([])
+    };
+
+    mockChangeDetectionMonitorService = {
+      recentEvents: signal([]),
+      isMonitoring: signal(false),
+      startMonitoring: jest.fn(),
+      stopMonitoring: jest.fn()
+    };
+
+    mockApplicationRef = {
+      components: []
     };
 
     await TestBed.configureTestingModule({
       imports: [TestWrapperComponent],
       providers: [
         { provide: ComponentTreeService, useValue: mockComponentTreeService },
-        { provide: CdVisualizerService, useValue: mockCdVisualizerService }
+        { provide: CdVisualizerService, useValue: mockCdVisualizerService },
+        { provide: ChangeDetectionMonitorService, useValue: mockChangeDetectionMonitorService },
+        { provide: ApplicationRef, useValue: mockApplicationRef },
+        { provide: NGX_CD_VISUALIZER_CONFIG, useValue: DEFAULT_CD_VISUALIZER_CONFIG }
       ]
     }).compileComponents();
 

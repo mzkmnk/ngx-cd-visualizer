@@ -34,11 +34,13 @@ export class ComponentTreeService {
   private readonly _componentTree = signal<ComponentNode[]>([]);
   private readonly _rootComponents = signal<ComponentNode[]>([]);
   private readonly _isScanning = signal(false);
+  private readonly _activeComponentIds = signal<Set<string>>(new Set());
   private _nodeIdCounter = 0;
 
   readonly componentTree = this._componentTree.asReadonly();
   readonly rootComponents = this._rootComponents.asReadonly();
   readonly isScanning = this._isScanning.asReadonly();
+  readonly activeComponentIds = this._activeComponentIds.asReadonly();
   readonly componentCount = computed(() => this._componentTree().length);
   readonly onPushComponentCount = computed(() => 
     this._componentTree().filter(node => node.isOnPushStrategy).length
@@ -136,13 +138,29 @@ export class ComponentTreeService {
     const nodes = this._componentTree();
     const updatedNodes = nodes.map(node => 
       node.id === componentId 
-        ? { ...node, isActive, lastChangeDetectionTime: isActive ? Date.now() : node.lastChangeDetectionTime }
+        ? { 
+            ...node, 
+            isActive, 
+            lastChangeDetectionTime: isActive ? Date.now() : node.lastChangeDetectionTime,
+            changeDetectionCount: isActive ? node.changeDetectionCount + 1 : node.changeDetectionCount
+          }
         : node
     );
     this._componentTree.set(updatedNodes);
+    
+    // Update active component IDs
+    this._activeComponentIds.update(activeIds => {
+      const newActiveIds = new Set(activeIds);
+      if (isActive) {
+        newActiveIds.add(componentId);
+      } else {
+        newActiveIds.delete(componentId);
+      }
+      return newActiveIds;
+    });
   }
 
-  incrementChangeDetectionCount(componentId: string): void {
+  incrementChangeDetectionCount(componentId: string, triggerSource?: unknown, propagatedFrom?: string): void {
     const nodes = this._componentTree();
     const updatedNodes = nodes.map(node => 
       node.id === componentId 
@@ -150,17 +168,63 @@ export class ComponentTreeService {
             ...node, 
             changeDetectionCount: node.changeDetectionCount + 1,
             lastChangeDetectionTime: Date.now(),
-            isActive: true
+            isActive: true,
+            triggerSource: triggerSource || node.triggerSource,
+            propagatedFrom: propagatedFrom || node.propagatedFrom,
+            triggerTimestamp: Date.now()
           }
         : node
     );
     this._componentTree.set(updatedNodes);
+    
+    // Add to active component IDs
+    this._activeComponentIds.update(activeIds => {
+      const newActiveIds = new Set(activeIds);
+      newActiveIds.add(componentId);
+      return newActiveIds;
+    });
+  }
+  
+  simulateTriggerPropagation(rootComponentId: string, triggerType: string, description: string): void {
+    const nodes = this._componentTree();
+    const rootNode = nodes.find(n => n.id === rootComponentId);
+    if (!rootNode) return;
+    
+    // Create trigger source
+    const triggerSource = {
+      type: triggerType,
+      details: { description },
+      confidence: 'high' as const
+    };
+    
+    // Mark root as trigger source
+    this.incrementChangeDetectionCount(rootComponentId, triggerSource);
+    
+    // Simulate propagation to children with delay
+    const simulatePropagation = (parentId: string, depth = 0) => {
+      const parent = nodes.find(n => n.id === parentId);
+      if (!parent || depth > 2) return;
+      
+      parent.children.forEach((child, index) => {
+        setTimeout(() => {
+          this.incrementChangeDetectionCount(child.id, undefined, parentId);
+          // Recursively propagate to grandchildren
+          simulatePropagation(child.id, depth + 1);
+        }, 300 * (depth + 1) + index * 100);
+      });
+    };
+    
+    // Start propagation
+    setTimeout(() => simulatePropagation(rootComponentId), 200);
   }
 
   resetActivityStates(): void {
     const nodes = this._componentTree();
     const updatedNodes = nodes.map(node => ({ ...node, isActive: false }));
     this._componentTree.set(updatedNodes);
+    
+    // Clear active component IDs
+    this._activeComponentIds.set(new Set());
   }
 
   private buildComponentNode<T extends object = object>(
@@ -181,6 +245,7 @@ export class ComponentTreeService {
       id: this.generateNodeId(),
       name: componentType.name || 'Unknown',
       selector: selector,
+      type: 'component', // Default type for components
       componentRef,
       componentType,
       parent,
@@ -321,6 +386,7 @@ export class ComponentTreeService {
       id: this.generateNodeId(componentType.name),
       name: componentType.name || 'Unknown',
       selector: selector,
+      type: 'component',
       componentRef,
       componentType,
       parent,
@@ -351,6 +417,7 @@ export class ComponentTreeService {
         id: nodeId,
         name: mock.name,
         selector: mock.selector,
+        type: 'component',
         componentRef: parentNode.componentRef, // Mock reference
         componentType: parentNode.componentType, // Mock type
         parent: parentNode,
@@ -388,6 +455,7 @@ export class ComponentTreeService {
         id: nodeId,
         name: mock.name,
         selector: mock.selector,
+        type: 'component',
         componentRef: dashboardNode.componentRef,
         componentType: dashboardNode.componentType,
         parent: dashboardNode,

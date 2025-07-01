@@ -22,6 +22,7 @@ export function createMockComponentNode(overrides: Partial<ComponentNode> = {}):
     id: 'test-node-1',
     name: 'TestComponent',
     selector: 'app-test',
+    type: 'component',
     componentRef: createMockComponentRef() as unknown as ComponentRef<object>,
     componentType: MockComponent,
     parent: null,
@@ -178,6 +179,7 @@ export function createMockComponentTree(): ComponentNode[] {
     id: 'parent-1',
     name: 'ParentComponent',
     selector: 'app-parent',
+    type: 'component',
     depth: 0
   });
 
@@ -185,6 +187,7 @@ export function createMockComponentTree(): ComponentNode[] {
     id: 'child-1',
     name: 'ChildComponent1',
     selector: 'app-child1',
+    type: 'component',
     parent,
     depth: 1
   });
@@ -193,6 +196,7 @@ export function createMockComponentTree(): ComponentNode[] {
     id: 'child-2',
     name: 'ChildComponent2',
     selector: 'app-child2',
+    type: 'component',
     parent,
     depth: 1,
     isOnPushStrategy: true
