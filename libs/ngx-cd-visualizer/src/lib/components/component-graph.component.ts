@@ -178,6 +178,8 @@ export class ComponentGraphComponent implements OnDestroy {
   private svg: d3.Selection<SVGElement, unknown, null, undefined> | null = null;
   private g: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
   private zoom: d3.ZoomBehavior<SVGElement, unknown> | null = null;
+  private linkElements: d3.Selection<SVGGElement, GraphLink, SVGGElement, unknown> | null = null;
+  private propagationAnimations = new Map<string, d3.Timer>();
 
 
   // Computed flattened nodes for graph
@@ -336,76 +338,48 @@ export class ComponentGraphComponent implements OnDestroy {
     // Clear previous content
     this.g.selectAll('*').remove();
 
-    // Create React Flow-inspired links with trigger flow visualization
+    // Create Voltagent-style links with animated flow visualization
     const linkGroup = this.g.append('g').attr('class', 'links-container');
     
-    const linkElements = linkGroup.selectAll('.graph-link')
+    this.linkElements = linkGroup.selectAll('.link-group')
       .data(links)
       .enter()
       .append('g')
-      .attr('class', 'link-group');
+      .attr('class', 'link-group')
+      .attr('data-source', d => typeof d.source === 'string' ? d.source : d.source.id)
+      .attr('data-target', d => typeof d.target === 'string' ? d.target : d.target.id);
     
-    // Main link path
-    linkElements.append('path')
-      .attr('class', d => `graph-link ${d.isPropagationPath ? 'propagation-path' : 'structure-path'}`)
-      .attr('stroke', d => this.getLinkColor(d))
-      .attr('stroke-width', d => d.isPropagationPath ? 3 : 2)
+    // Background path (always visible)
+    this.linkElements.append('path')
+      .attr('class', 'graph-link-bg')
+      .attr('stroke', '#e5e7eb')
+      .attr('stroke-width', 2)
       .attr('fill', 'none')
-      .attr('opacity', d => d.isPropagationPath ? 0.9 : 0.4)
+      .attr('opacity', 0.3)
       .style('stroke-linecap', 'round')
-      .style('stroke-dasharray', d => d.isPropagationPath ? '0' : '5,5')
       .attr('d', d => this.createLinkPath(d, positions));
     
-    // Add animated flow indicators for propagation paths
-    const propagationLinks = linkElements.filter(d => d.isPropagationPath);
+    // Animated flow path (hidden by default, animated on trigger)
+    this.linkElements.append('path')
+      .attr('class', 'graph-link-flow')
+      .attr('stroke', d => this.getTriggerColor(d.triggerType, 0.9))
+      .attr('stroke-width', 4)
+      .attr('fill', 'none')
+      .attr('opacity', 0)
+      .style('stroke-linecap', 'round')
+      .style('filter', 'drop-shadow(0 0 8px currentColor)')
+      .attr('d', d => this.createLinkPath(d, positions));
     
-    propagationLinks.append('circle')
-      .attr('class', 'flow-indicator')
-      .attr('r', 4)
-      .attr('fill', d => this.getTriggerColor(d.triggerType))
-      .attr('opacity', 0.8)
-      .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))')
-      .each(function(d) {
-        const circle = d3.select(this);
-        const parentNode = this.parentNode as Element;
-        if (!parentNode) return;
-        const path = d3.select(parentNode).select('.graph-link').node() as SVGPathElement;
-        if (path) {
-          const pathLength = path.getTotalLength();
-          circle
-            .attr('transform', `translate(${path.getPointAtLength(0).x}, ${path.getPointAtLength(0).y})`)
-            .transition()
-            .duration(2000)
-            .ease(d3.easeLinear)
-            .attrTween('transform', () => {
-              return (t: number) => {
-                const point = path.getPointAtLength(t * pathLength);
-                return `translate(${point.x}, ${point.y})`;
-              };
-            })
-            .on('end', function repeat() {
-              d3.select(this)
-                .transition()
-                .delay(500)
-                .duration(2000)
-                .ease(d3.easeLinear)
-                .attrTween('transform', () => {
-                  return (t: number) => {
-                    const point = path.getPointAtLength(t * pathLength);
-                    return `translate(${point.x}, ${point.y})`;
-                  };
-                })
-                .on('end', repeat);
-            });
-        }
-      });
-    
-    // Add arrowheads for propagation paths
-    propagationLinks.append('path')
-      .attr('class', 'arrow-head')
-      .attr('fill', d => this.getTriggerColor(d.triggerType))
-      .attr('d', d => this.createArrowHead(d, positions))
-      .attr('opacity', 0.8);
+    // Glow effect path for enhanced visibility
+    this.linkElements.append('path')
+      .attr('class', 'graph-link-glow')
+      .attr('stroke', d => this.getTriggerColor(d.triggerType, 0.4))
+      .attr('stroke-width', 8)
+      .attr('fill', 'none')
+      .attr('opacity', 0)
+      .style('stroke-linecap', 'round')
+      .style('filter', 'blur(4px)')
+      .attr('d', d => this.createLinkPath(d, positions));
 
     // Create node groups
     const nodeGroups = this.g.selectAll('.graph-node')
@@ -829,6 +803,10 @@ export class ComponentGraphComponent implements OnDestroy {
   private updateActiveStates(activeNodeIds: Set<string>): void {
     if (!this.g) return;
 
+    // Track newly activated nodes for flow animation
+    const currentlyActive = new Set(this.flattenedNodes().filter(n => n.isActive).map(n => n.id));
+    const newlyActive = new Set([...activeNodeIds].filter(id => !currentlyActive.has(id)));
+    
     // Update node colors and sizes for active states only
     this.g.selectAll('.graph-node')
       .select('rect')
@@ -880,6 +858,11 @@ export class ComponentGraphComponent implements OnDestroy {
         }
         return '';
       });
+      
+    // Trigger flow animations for newly active nodes
+    newlyActive.forEach(nodeId => {
+      this.animateFlowToNode(nodeId);
+    });
   }
 
   private dragStarted(event: d3.D3DragEvent<SVGGElement, GraphNode, GraphNode>): void {
@@ -1038,13 +1021,131 @@ export class ComponentGraphComponent implements OnDestroy {
     }
   }
 
+  private animateFlowToNode(targetNodeId: string): void {
+    if (!this.linkElements) return;
+    
+    // Find all paths leading to this node
+    const incomingLinks = this.linkElements.filter((d: GraphLink) => {
+      const targetId = typeof d.target === 'string' ? d.target : d.target.id;
+      return targetId === targetNodeId;
+    });
+    
+    // Animate each incoming link
+    incomingLinks.each((linkData: GraphLink, i: number, nodes: SVGGElement[] | ArrayLike<SVGGElement>) => {
+      const linkGroup = d3.select(nodes[i]);
+      const sourceId = typeof linkData.source === 'string' ? linkData.source : linkData.source.id;
+      
+      // Schedule animation with delay based on propagation depth
+      const sourceNode = this.flattenedNodes().find(n => n.id === sourceId);
+      const delay = sourceNode ? sourceNode.depth * 150 : 0;
+      
+      setTimeout(() => {
+        this.animateSingleLink(linkGroup, linkData);
+      }, delay);
+    });
+  }
+  
+  private animateSingleLink(linkGroup: d3.Selection<any, any, any, any>, linkData: GraphLink): void {
+    const flowPath = linkGroup.select('.graph-link-flow');
+    const glowPath = linkGroup.select('.graph-link-glow');
+    
+    if (flowPath.empty()) return;
+    
+    const pathElement = flowPath.node() as SVGPathElement;
+    const pathLength = pathElement.getTotalLength();
+    
+    // Reset any existing animations
+    const linkId = `${typeof linkData.source === 'string' ? linkData.source : linkData.source.id}-${typeof linkData.target === 'string' ? linkData.target : linkData.target.id}`;
+    if (this.propagationAnimations.has(linkId)) {
+      this.propagationAnimations.get(linkId)!.stop();
+    }
+    
+    // Set up stroke-dasharray for animation
+    const dashLength = pathLength;
+    flowPath
+      .style('stroke-dasharray', `${dashLength},${dashLength}`)
+      .style('stroke-dashoffset', dashLength)
+      .attr('opacity', 1);
+    
+    glowPath
+      .style('stroke-dasharray', `${dashLength},${dashLength}`)
+      .style('stroke-dashoffset', dashLength)
+      .attr('opacity', 1);
+    
+    // Animate the line drawing effect (Voltagent-style)
+    const startTime = Date.now();
+    const duration = 800; // Animation duration in ms
+    
+    const timer = d3.timer((elapsed) => {
+      const progress = Math.min(elapsed / duration, 1);
+      const easeProgress = d3.easeCubicOut(progress);
+      
+      const currentOffset = dashLength * (1 - easeProgress);
+      flowPath.style('stroke-dashoffset', currentOffset);
+      glowPath.style('stroke-dashoffset', currentOffset);
+      
+      if (progress >= 1) {
+        timer.stop();
+        
+        // Add pulsing effect at the end
+        this.addPulseEffect(linkGroup);
+        
+        // Clean up after a delay
+        setTimeout(() => {
+          flowPath.transition().duration(300).attr('opacity', 0);
+          glowPath.transition().duration(300).attr('opacity', 0);
+          this.propagationAnimations.delete(linkId);
+        }, 1000);
+      }
+    });
+    
+    this.propagationAnimations.set(linkId, timer);
+  }
+  
+  private addPulseEffect(linkGroup: d3.Selection<any, any, any, any>): void {
+    const flowPath = linkGroup.select('.graph-link-flow');
+    
+    // Create pulsing glow effect
+    flowPath
+      .transition()
+      .duration(300)
+      .ease(d3.easeBackOut)
+      .attr('stroke-width', 6)
+      .style('filter', 'drop-shadow(0 0 12px currentColor)')
+      .transition()
+      .duration(300)
+      .ease(d3.easeBackOut)
+      .attr('stroke-width', 4)
+      .style('filter', 'drop-shadow(0 0 8px currentColor)');
+  }
+  
+  private findPathToRoot(nodeId: string): string[] {
+    const path: string[] = [];
+    const node = this.flattenedNodes().find(n => n.id === nodeId);
+    
+    if (!node) return path;
+    
+    let current: ComponentNode | null = node;
+    while (current) {
+      path.unshift(current.id);
+      current = current.parent;
+    }
+    
+    return path;
+  }
+
   private getNodeSizeConfig() {
     return { width: 140, height: 90, spacing: 180, levelHeight: 160 };
   }
-
+  
   ngOnDestroy(): void {
     if (this.simulation) {
       this.simulation.stop();
     }
+    
+    // Clean up any running animations
+    this.propagationAnimations.forEach(timer => timer.stop());
+    this.propagationAnimations.clear();
   }
+
 }
