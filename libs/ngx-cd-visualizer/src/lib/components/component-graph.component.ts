@@ -20,11 +20,16 @@ interface GraphNode extends d3.SimulationNodeDatum {
   type: string;
   isActive: boolean;
   originalNode: ComponentNode;
+  isTriggerSource: boolean;
+  triggerType?: string;
+  propagationDepth: number;
 }
 
 interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
   source: string | GraphNode;
   target: string | GraphNode;
+  isPropagationPath: boolean;
+  triggerType?: string;
 }
 
 /**
@@ -192,28 +197,57 @@ export class ComponentGraphComponent implements OnDestroy {
     return result;
   });
 
-  // Computed graph data - structure only, no active state
+  // Computed graph data with trigger source tracking
   readonly graphData = computed(() => {
     const flatNodes = this.flattenedNodes();
     
-    const nodes: GraphNode[] = flatNodes.map(node => ({
-      id: node.id,
-      name: node.name,
-      type: node.type,
-      isActive: false, // Will be updated separately
-      originalNode: node
-    }));
+    // Build propagation map to calculate trigger depth
+    const propagationMap = this.buildPropagationMap(flatNodes);
+    
+    const nodes: GraphNode[] = flatNodes.map(node => {
+      const isTriggerSource = !!node.triggerSource && !node.propagatedFrom;
+      const propagationDepth = propagationMap.get(node.id) || 0;
+      
+      return {
+        id: node.id,
+        name: node.name,
+        type: node.type,
+        isActive: false, // Will be updated separately
+        originalNode: node,
+        isTriggerSource,
+        triggerType: node.triggerSource?.type,
+        propagationDepth
+      };
+    });
 
     const links: GraphLink[] = [];
     
     // Create parent-child relationships
     flatNodes.forEach(node => {
       node.children.forEach(child => {
+        const isPropagationPath = !!node.triggerSource || !!child.propagatedFrom;
         links.push({
           source: node.id,
-          target: child.id
+          target: child.id,
+          isPropagationPath,
+          triggerType: node.triggerSource?.type || child.triggerSource?.type
         });
       });
+    });
+    
+    // Add trigger propagation links
+    flatNodes.forEach(node => {
+      if (node.propagatedFrom) {
+        const sourceExists = flatNodes.find(n => n.id === node.propagatedFrom);
+        if (sourceExists) {
+          links.push({
+            source: node.propagatedFrom,
+            target: node.id,
+            isPropagationPath: true,
+            triggerType: node.triggerSource?.type
+          });
+        }
+      }
     });
 
     return { nodes, links };
@@ -302,40 +336,76 @@ export class ComponentGraphComponent implements OnDestroy {
     // Clear previous content
     this.g.selectAll('*').remove();
 
-    // Create smooth bezier curve links first (so they appear behind nodes)
+    // Create React Flow-inspired links with trigger flow visualization
     const linkGroup = this.g.append('g').attr('class', 'links-container');
     
     const linkElements = linkGroup.selectAll('.graph-link')
       .data(links)
       .enter()
-      .append('path')
-      .attr('class', 'graph-link')
-      .attr('stroke', '#cbd5e1')
-      .attr('stroke-width', 2)
+      .append('g')
+      .attr('class', 'link-group');
+    
+    // Main link path
+    linkElements.append('path')
+      .attr('class', d => `graph-link ${d.isPropagationPath ? 'propagation-path' : 'structure-path'}`)
+      .attr('stroke', d => this.getLinkColor(d))
+      .attr('stroke-width', d => d.isPropagationPath ? 3 : 2)
       .attr('fill', 'none')
-      .attr('opacity', 0.7)
+      .attr('opacity', d => d.isPropagationPath ? 0.9 : 0.4)
       .style('stroke-linecap', 'round')
-      .attr('d', d => {
-        const sourceId = typeof d.source === 'string' ? d.source : d.source.id;
-        const targetId = typeof d.target === 'string' ? d.target : d.target.id;
-        const sourcePos = positions.get(sourceId);
-        const targetPos = positions.get(targetId);
-        
-        if (!sourcePos || !targetPos) return '';
-        
-        // Create smooth bezier curve like React Flow
-        const dx = targetPos.x - sourcePos.x;
-        const dy = targetPos.y - sourcePos.y;
-        const curvature = 0.3;
-        
-        // Control points for smooth S-curve
-        const c1x = sourcePos.x + dx * curvature;
-        const c1y = sourcePos.y;
-        const c2x = targetPos.x - dx * curvature;
-        const c2y = targetPos.y;
-        
-        return `M ${sourcePos.x},${sourcePos.y} C ${c1x},${c1y} ${c2x},${c2y} ${targetPos.x},${targetPos.y}`;
+      .style('stroke-dasharray', d => d.isPropagationPath ? '0' : '5,5')
+      .attr('d', d => this.createLinkPath(d, positions));
+    
+    // Add animated flow indicators for propagation paths
+    const propagationLinks = linkElements.filter(d => d.isPropagationPath);
+    
+    propagationLinks.append('circle')
+      .attr('class', 'flow-indicator')
+      .attr('r', 4)
+      .attr('fill', d => this.getTriggerColor(d.triggerType))
+      .attr('opacity', 0.8)
+      .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))')
+      .each(function(d) {
+        const circle = d3.select(this);
+        const parentNode = this.parentNode as Element;
+        if (!parentNode) return;
+        const path = d3.select(parentNode).select('.graph-link').node() as SVGPathElement;
+        if (path) {
+          const pathLength = path.getTotalLength();
+          circle
+            .attr('transform', `translate(${path.getPointAtLength(0).x}, ${path.getPointAtLength(0).y})`)
+            .transition()
+            .duration(2000)
+            .ease(d3.easeLinear)
+            .attrTween('transform', () => {
+              return (t: number) => {
+                const point = path.getPointAtLength(t * pathLength);
+                return `translate(${point.x}, ${point.y})`;
+              };
+            })
+            .on('end', function repeat() {
+              d3.select(this)
+                .transition()
+                .delay(500)
+                .duration(2000)
+                .ease(d3.easeLinear)
+                .attrTween('transform', () => {
+                  return (t: number) => {
+                    const point = path.getPointAtLength(t * pathLength);
+                    return `translate(${point.x}, ${point.y})`;
+                  };
+                })
+                .on('end', repeat);
+            });
+        }
       });
+    
+    // Add arrowheads for propagation paths
+    propagationLinks.append('path')
+      .attr('class', 'arrow-head')
+      .attr('fill', d => this.getTriggerColor(d.triggerType))
+      .attr('d', d => this.createArrowHead(d, positions))
+      .attr('opacity', 0.8);
 
     // Create node groups
     const nodeGroups = this.g.selectAll('.graph-node')
@@ -349,7 +419,7 @@ export class ComponentGraphComponent implements OnDestroy {
         return position ? `translate(${position.x},${position.y})` : 'translate(0,0)';
       });
 
-    // Add main node background with modern card styling
+    // Add main node background with modern card styling and trigger indicators
     const sizeConfig = this.getNodeSizeConfig();
     nodeGroups.append('rect')
       .attr('width', sizeConfig.width)
@@ -360,17 +430,45 @@ export class ComponentGraphComponent implements OnDestroy {
       .attr('ry', 12)
       .attr('fill', d => this.getNodeGradient(d))
       .attr('stroke', d => this.getNodeBorderColor(d))
-      .attr('stroke-width', d => d.originalNode.isOnPushStrategy ? 2.5 : 1.5)
-      .style('filter', 'drop-shadow(0 4px 16px rgba(0,0,0,0.12))')
+      .attr('stroke-width', d => {
+        if (d.isTriggerSource) return 3;
+        return d.originalNode.isOnPushStrategy ? 2.5 : 1.5;
+      })
+      .style('filter', d => {
+        if (d.isTriggerSource) return 'drop-shadow(0 6px 20px rgba(59,130,246,0.3))';
+        return 'drop-shadow(0 4px 16px rgba(0,0,0,0.12))';
+      })
       .transition()
       .duration(300)
       .ease(d3.easeBackOut);
 
+    // Add trigger source indicator with modern design
+    const triggerNodes = nodeGroups.filter(d => d.isTriggerSource);
+    
+    triggerNodes.append('circle')
+      .attr('cx', 55)
+      .attr('cy', -35)
+      .attr('r', 8)
+      .attr('fill', d => this.getTriggerColor(d.triggerType, 0.9))
+      .attr('stroke', '#ffffff')
+      .attr('stroke-width', 2)
+      .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))');
+
+    triggerNodes.append('text')
+      .attr('x', 55)
+      .attr('y', -30)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#ffffff')
+      .style('font-size', '8px')
+      .style('font-weight', '700')
+      .style('font-family', 'system-ui, -apple-system, sans-serif')
+      .text(d => this.getTriggerIcon(d.triggerType));
+      
     // Add OnPush badge with modern design
     const onPushNodes = nodeGroups.filter(d => d.originalNode.isOnPushStrategy);
     
     onPushNodes.append('rect')
-      .attr('x', 45)
+      .attr('x', d => d.isTriggerSource ? 25 : 45)
       .attr('y', -35)
       .attr('width', 20)
       .attr('height', 14)
@@ -381,7 +479,7 @@ export class ComponentGraphComponent implements OnDestroy {
       .attr('stroke-width', 1);
 
     onPushNodes.append('text')
-      .attr('x', 55)
+      .attr('x', d => d.isTriggerSource ? 35 : 55)
       .attr('y', -25)
       .attr('text-anchor', 'middle')
       .attr('fill', '#ffffff')
@@ -401,22 +499,51 @@ export class ComponentGraphComponent implements OnDestroy {
       .style('font-family', 'system-ui, -apple-system, sans-serif')
       .text(d => this.getNodeLabel(d));
 
+    // Add trigger description with modern styling
+    nodeGroups.filter(d => d.isTriggerSource && !!d.originalNode.triggerSource)
+      .append('text')
+      .attr('class', 'graph-trigger')
+      .attr('dy', '0.2em')
+      .attr('text-anchor', 'middle')
+      .attr('fill', d => this.getTriggerColor(d.triggerType))
+      .style('font-size', '10px')
+      .style('font-weight', '600')
+      .style('font-family', 'system-ui, -apple-system, sans-serif')
+      .text(d => this.getTriggerDescription(d.originalNode.triggerSource!));
+    
     // Add change detection count with modern styling
     nodeGroups.append('text')
       .attr('class', 'graph-count')
-      .attr('dy', '0.5em')
+      .attr('dy', d => d.isTriggerSource ? '1.2em' : '0.5em')
       .attr('text-anchor', 'middle')
       .attr('fill', '#6B7280')
       .style('font-size', '11px')
       .style('font-weight', '500')
       .style('font-family', 'system-ui, -apple-system, sans-serif')
-      .text(d => `Changes: ${d.originalNode.changeDetectionCount}`);
+      .text(d => `CD: ${d.originalNode.changeDetectionCount}`);
+
+    // Add propagation depth indicator
+    nodeGroups.filter(d => d.propagationDepth > 0)
+      .append('text')
+      .attr('class', 'graph-depth')
+      .attr('dy', d => d.isTriggerSource ? '2.2em' : '1.5em')
+      .attr('text-anchor', 'middle') 
+      .attr('fill', '#9CA3AF')
+      .style('font-size', '9px')
+      .style('font-weight', '500')
+      .style('font-family', 'system-ui, -apple-system, sans-serif')
+      .text(d => `Depth: ${d.propagationDepth}`);
 
     // Add last change time with improved visibility
     nodeGroups.filter(d => !!d.originalNode.lastChangeDetectionTime)
       .append('text')
       .attr('class', 'graph-time')
-      .attr('dy', '1.8em')
+      .attr('dy', d => {
+        let offset = 1.8;
+        if (d.isTriggerSource) offset += 0.7;
+        if (d.propagationDepth > 0) offset += 0.7;
+        return `${offset}em`;
+      })
       .attr('text-anchor', 'middle')
       .attr('fill', '#9CA3AF')
       .style('font-size', '10px')
@@ -771,8 +898,148 @@ export class ComponentGraphComponent implements OnDestroy {
 
 
 
+  private buildPropagationMap(nodes: ComponentNode[]): Map<string, number> {
+    const propagationMap = new Map<string, number>();
+    
+    // Find trigger sources (nodes with triggerSource but no propagatedFrom)
+    const triggerSources = nodes.filter(node => 
+      node.triggerSource && !node.propagatedFrom
+    );
+    
+    // BFS to calculate propagation depth
+    const queue: Array<{nodeId: string, depth: number}> = [];
+    const visited = new Set<string>();
+    
+    triggerSources.forEach(source => {
+      queue.push({ nodeId: source.id, depth: 0 });
+      propagationMap.set(source.id, 0);
+    });
+    
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (visited.has(current.nodeId)) continue;
+      visited.add(current.nodeId);
+      
+      // Find nodes that were propagated from this node
+      const propagatedNodes = nodes.filter(node => 
+        node.propagatedFrom === current.nodeId
+      );
+      
+      propagatedNodes.forEach(node => {
+        const newDepth = current.depth + 1;
+        propagationMap.set(node.id, newDepth);
+        queue.push({ nodeId: node.id, depth: newDepth });
+      });
+    }
+    
+    return propagationMap;
+  }
+  
+  private createLinkPath(link: GraphLink, positions: Map<string, {x: number, y: number}>): string {
+    const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
+    const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+    const sourcePos = positions.get(sourceId);
+    const targetPos = positions.get(targetId);
+    
+    if (!sourcePos || !targetPos) return '';
+    
+    // Create smooth bezier curve like React Flow
+    const dx = targetPos.x - sourcePos.x;
+    const dy = targetPos.y - sourcePos.y;
+    const curvature = link.isPropagationPath ? 0.4 : 0.3;
+    
+    // Control points for smooth curve
+    const c1x = sourcePos.x + dx * curvature;
+    const c1y = sourcePos.y;
+    const c2x = targetPos.x - dx * curvature;
+    const c2y = targetPos.y;
+    
+    return `M ${sourcePos.x},${sourcePos.y} C ${c1x},${c1y} ${c2x},${c2y} ${targetPos.x},${targetPos.y}`;
+  }
+  
+  private createArrowHead(link: GraphLink, positions: Map<string, {x: number, y: number}>): string {
+    const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
+    const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+    const targetPos = positions.get(targetId);
+    const sourcePos = positions.get(sourceId);
+    
+    if (!sourcePos || !targetPos) return '';
+    
+    // Calculate arrow position and angle
+    const dx = targetPos.x - sourcePos.x;
+    const dy = targetPos.y - sourcePos.y;
+    const angle = Math.atan2(dy, dx);
+    
+    // Arrow dimensions
+    const arrowLength = 8;
+    const arrowWidth = 6;
+    
+    // Calculate arrow points
+    const x1 = targetPos.x - arrowLength * Math.cos(angle - Math.PI / 6);
+    const y1 = targetPos.y - arrowLength * Math.sin(angle - Math.PI / 6);
+    const x2 = targetPos.x - arrowLength * Math.cos(angle + Math.PI / 6);
+    const y2 = targetPos.y - arrowLength * Math.sin(angle + Math.PI / 6);
+    
+    return `M ${targetPos.x},${targetPos.y} L ${x1},${y1} L ${x2},${y2} Z`;
+  }
+  
+  private getLinkColor(link: GraphLink): string {
+    if (!link.isPropagationPath) return '#e5e7eb';
+    return this.getTriggerColor(link.triggerType, 0.8);
+  }
+  
+  private getTriggerColor(triggerType?: string, opacity: number = 1): string {
+    const colors = {
+      'user-interaction': '#3b82f6', // Blue
+      'signal-update': '#10b981',    // Emerald  
+      'async-operation': '#f59e0b',  // Amber
+      'input-change': '#8b5cf6',     // Purple
+      'manual': '#6b7280',           // Gray
+      'unknown': '#9ca3af'           // Light gray
+    };
+    
+    const color = colors[triggerType as keyof typeof colors] || colors.unknown;
+    return opacity < 1 ? `${color}${Math.round(opacity * 255).toString(16).padStart(2, '0')}` : color;
+  }
+  
+  private getTriggerIcon(triggerType?: string): string {
+    const icons = {
+      'user-interaction': '👆',
+      'signal-update': '⚡',
+      'async-operation': '⏳',
+      'input-change': '📥',
+      'manual': '🔧',
+      'unknown': '❓'
+    };
+    
+    return icons[triggerType as keyof typeof icons] || icons.unknown;
+  }
+  
+  private getTriggerDescription(trigger: any): string {
+    if (trigger.details?.description) {
+      return trigger.details.description.length > 12 
+        ? trigger.details.description.substring(0, 12) + '...'
+        : trigger.details.description;
+    }
+    
+    switch (trigger.type) {
+      case 'user-interaction':
+        return trigger.details?.event ? `${trigger.details.event}` : 'User Click';
+      case 'signal-update':
+        return trigger.details?.signalName ? `${trigger.details.signalName}` : 'Signal';
+      case 'async-operation':
+        return trigger.details?.asyncType ? `${trigger.details.asyncType}` : 'Async';
+      case 'input-change':
+        return trigger.details?.inputProperty ? `@${trigger.details.inputProperty}` : 'Input';
+      case 'manual':
+        return 'Manual';
+      default:
+        return 'Unknown';
+    }
+  }
+
   private getNodeSizeConfig() {
-    return { width: 140, height: 80, spacing: 180, levelHeight: 150 };
+    return { width: 140, height: 90, spacing: 180, levelHeight: 160 };
   }
 
   ngOnDestroy(): void {

@@ -81,6 +81,28 @@ import { FilterMode, VisualizerThemeType } from '../models';
           <ng-icon name="tablerRefreshOff" size="14"></ng-icon>
           Reset
         </button>
+        
+        <!-- Demo trigger buttons -->
+        <button 
+          class="action-btn demo-btn user-trigger"
+          (click)="simulateUserTrigger.emit()"
+          title="Simulate user interaction trigger">
+          👆 User
+        </button>
+        
+        <button 
+          class="action-btn demo-btn signal-trigger"
+          (click)="simulateSignalTrigger.emit()"
+          title="Simulate signal update trigger">
+          ⚡ Signal
+        </button>
+        
+        <button 
+          class="action-btn demo-btn async-trigger"
+          (click)="simulateAsyncTrigger.emit()"
+          title="Simulate async operation trigger">
+          ⏳ Async
+        </button>
       </div>
 
       <!-- View options section -->
@@ -229,6 +251,37 @@ import { FilterMode, VisualizerThemeType } from '../models';
       opacity: 0.5;
       cursor: not-allowed;
     }
+    
+    .demo-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      font-weight: 600;
+      font-size: 11px;
+      padding: 6px 10px;
+      min-width: 50px;
+      
+      &:hover {
+        background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      }
+      
+      &.user-trigger {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        &:hover { background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); }
+      }
+      
+      &.signal-trigger {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        &:hover { background: linear-gradient(135deg, #047857 0%, #065f46 100%); }
+      }
+      
+      &.async-trigger {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        &:hover { background: linear-gradient(135deg, #d97706 0%, #b45309 100%); }
+      }
+    }
 
     .scan-btn svg {
       animation: none;
@@ -368,6 +421,9 @@ export class VisualizerToolbarComponent {
   readonly countsToggle = output<boolean>();
   readonly compactToggle = output<boolean>();
   readonly themeChange = output<VisualizerThemeType>();
+  readonly simulateUserTrigger = output<void>();
+  readonly simulateSignalTrigger = output<void>();
+  readonly simulateAsyncTrigger = output<void>();
 
   setFilter(mode: FilterMode): void {
     this.filterChange.emit(mode);

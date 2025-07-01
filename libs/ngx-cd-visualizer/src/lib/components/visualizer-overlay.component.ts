@@ -101,7 +101,10 @@ import { FilterMode, VisualizerThemeType } from '../models';
             (timestampsToggle)="toggleTimestamps($event)"
             (countsToggle)="toggleCounts($event)"
             (compactToggle)="toggleCompactView($event)"
-            (themeChange)="setTheme($event)">
+            (themeChange)="setTheme($event)"
+            (simulateUserTrigger)="simulateUserTrigger()"
+            (simulateSignalTrigger)="simulateSignalTrigger()"
+            (simulateAsyncTrigger)="simulateAsyncTrigger()">
           </lib-visualizer-toolbar>
           
           <!-- View Content -->
@@ -748,5 +751,38 @@ export class VisualizerOverlayComponent {
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
+  }
+  
+  simulateUserTrigger(): void {
+    const rootComponents = this.componentTreeService.rootComponents();
+    if (rootComponents.length > 0) {
+      this.componentTreeService.simulateTriggerPropagation(
+        rootComponents[0].id, 
+        'user-interaction', 
+        'Button click'
+      );
+    }
+  }
+  
+  simulateSignalTrigger(): void {
+    const rootComponents = this.componentTreeService.rootComponents();
+    if (rootComponents.length > 0) {
+      this.componentTreeService.simulateTriggerPropagation(
+        rootComponents[0].id, 
+        'signal-update', 
+        'userCount signal'
+      );
+    }
+  }
+  
+  simulateAsyncTrigger(): void {
+    const rootComponents = this.componentTreeService.rootComponents();
+    if (rootComponents.length > 0) {
+      this.componentTreeService.simulateTriggerPropagation(
+        rootComponents[0].id, 
+        'async-operation', 
+        'HTTP response'
+      );
+    }
   }
 }

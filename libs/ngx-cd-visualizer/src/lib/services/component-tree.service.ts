@@ -155,7 +155,7 @@ export class ComponentTreeService {
     });
   }
 
-  incrementChangeDetectionCount(componentId: string): void {
+  incrementChangeDetectionCount(componentId: string, triggerSource?: any, propagatedFrom?: string): void {
     const nodes = this._componentTree();
     const updatedNodes = nodes.map(node => 
       node.id === componentId 
@@ -163,7 +163,10 @@ export class ComponentTreeService {
             ...node, 
             changeDetectionCount: node.changeDetectionCount + 1,
             lastChangeDetectionTime: Date.now(),
-            isActive: true
+            isActive: true,
+            triggerSource: triggerSource || node.triggerSource,
+            propagatedFrom: propagatedFrom || node.propagatedFrom,
+            triggerTimestamp: Date.now()
           }
         : node
     );
@@ -175,6 +178,39 @@ export class ComponentTreeService {
       newActiveIds.add(componentId);
       return newActiveIds;
     });
+  }
+  
+  simulateTriggerPropagation(rootComponentId: string, triggerType: string, description: string): void {
+    const nodes = this._componentTree();
+    const rootNode = nodes.find(n => n.id === rootComponentId);
+    if (!rootNode) return;
+    
+    // Create trigger source
+    const triggerSource = {
+      type: triggerType as any,
+      details: { description },
+      confidence: 'high' as const
+    };
+    
+    // Mark root as trigger source
+    this.incrementChangeDetectionCount(rootComponentId, triggerSource);
+    
+    // Simulate propagation to children with delay
+    const simulatePropagation = (parentId: string, depth: number = 0) => {
+      const parent = nodes.find(n => n.id === parentId);
+      if (!parent || depth > 2) return;
+      
+      parent.children.forEach((child, index) => {
+        setTimeout(() => {
+          this.incrementChangeDetectionCount(child.id, undefined, parentId);
+          // Recursively propagate to grandchildren
+          simulatePropagation(child.id, depth + 1);
+        }, 300 * (depth + 1) + index * 100);
+      });
+    };
+    
+    // Start propagation
+    setTimeout(() => simulatePropagation(rootComponentId), 200);
   }
 
   resetActivityStates(): void {
