@@ -89,7 +89,7 @@ interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
     .graph-container {
       flex: 1;
       position: relative;
-      background: var(--cd-graph-bg, #1a1a1a);
+      background: var(--cd-graph-bg, #fafafa);
       overflow: hidden;
       border-radius: 0;
     }
@@ -137,19 +137,19 @@ interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
       user-select: none;
     }
 
-    /* Dark theme support */
+    /* Dark theme support - maintain light modern appearance */
     @media (prefers-color-scheme: dark) {
       .component-graph {
-        --cd-text: #ffffff;
-        --cd-muted: #cccccc;
-        --cd-graph-bg: #2d2d2d;
-        --cd-control-bg: rgba(60, 60, 60, 0.9);
-        --cd-control-border: #555;
-        --cd-control-hover: rgba(70, 70, 70, 1);
-        --cd-link: #666;
-        --cd-active-link: #4CAF50;
-        --cd-selected: #2196F3;
-        --cd-active-glow: #4CAF50;
+        --cd-text: #374151;
+        --cd-muted: #6b7280;
+        --cd-graph-bg: #f8fafc;
+        --cd-control-bg: rgba(255, 255, 255, 0.9);
+        --cd-control-border: #e5e7eb;
+        --cd-control-hover: rgba(243, 244, 246, 1);
+        --cd-link: #cbd5e1;
+        --cd-active-link: #10b981;
+        --cd-selected: #3b82f6;
+        --cd-active-glow: #10b981;
       }
     }
   `],
@@ -302,34 +302,39 @@ export class ComponentGraphComponent implements OnDestroy {
     // Clear previous content
     this.g.selectAll('*').remove();
 
-    // Create links first (so they appear behind nodes)
-    this.g.selectAll('.graph-link')
+    // Create smooth bezier curve links first (so they appear behind nodes)
+    const linkGroup = this.g.append('g').attr('class', 'links-container');
+    
+    const linkElements = linkGroup.selectAll('.graph-link')
       .data(links)
       .enter()
-      .append('line')
+      .append('path')
       .attr('class', 'graph-link')
-      .attr('stroke', '#b1b1b7')
+      .attr('stroke', '#cbd5e1')
       .attr('stroke-width', 2)
-      .attr('opacity', 0.6)
-      .attr('x1', d => {
+      .attr('fill', 'none')
+      .attr('opacity', 0.7)
+      .style('stroke-linecap', 'round')
+      .attr('d', d => {
         const sourceId = typeof d.source === 'string' ? d.source : d.source.id;
-        const sourcePos = positions.get(sourceId);
-        return sourcePos ? sourcePos.x : 0;
-      })
-      .attr('y1', d => {
-        const sourceId = typeof d.source === 'string' ? d.source : d.source.id;
-        const sourcePos = positions.get(sourceId);
-        return sourcePos ? sourcePos.y : 0;
-      })
-      .attr('x2', d => {
         const targetId = typeof d.target === 'string' ? d.target : d.target.id;
+        const sourcePos = positions.get(sourceId);
         const targetPos = positions.get(targetId);
-        return targetPos ? targetPos.x : 0;
-      })
-      .attr('y2', d => {
-        const targetId = typeof d.target === 'string' ? d.target : d.target.id;
-        const targetPos = positions.get(targetId);
-        return targetPos ? targetPos.y : 0;
+        
+        if (!sourcePos || !targetPos) return '';
+        
+        // Create smooth bezier curve like React Flow
+        const dx = targetPos.x - sourcePos.x;
+        const dy = targetPos.y - sourcePos.y;
+        const curvature = 0.3;
+        
+        // Control points for smooth S-curve
+        const c1x = sourcePos.x + dx * curvature;
+        const c1y = sourcePos.y;
+        const c2x = targetPos.x - dx * curvature;
+        const c2y = targetPos.y;
+        
+        return `M ${sourcePos.x},${sourcePos.y} C ${c1x},${c1y} ${c2x},${c2y} ${targetPos.x},${targetPos.y}`;
       });
 
     // Create node groups
@@ -344,19 +349,22 @@ export class ComponentGraphComponent implements OnDestroy {
         return position ? `translate(${position.x},${position.y})` : 'translate(0,0)';
       });
 
-    // Add main node background with gradient
+    // Add main node background with modern card styling
     const sizeConfig = this.getNodeSizeConfig();
     nodeGroups.append('rect')
       .attr('width', sizeConfig.width)
       .attr('height', sizeConfig.height)
       .attr('x', -sizeConfig.width / 2)
       .attr('y', -sizeConfig.height / 2)
-      .attr('rx', 8)
-      .attr('ry', 8)
+      .attr('rx', 12)
+      .attr('ry', 12)
       .attr('fill', d => this.getNodeGradient(d))
       .attr('stroke', d => this.getNodeBorderColor(d))
-      .attr('stroke-width', d => d.originalNode.isOnPushStrategy ? 2 : 1)
-      .attr('filter', 'drop-shadow(0 2px 8px rgba(0,0,0,0.1))');
+      .attr('stroke-width', d => d.originalNode.isOnPushStrategy ? 2.5 : 1.5)
+      .style('filter', 'drop-shadow(0 4px 16px rgba(0,0,0,0.12))')
+      .transition()
+      .duration(300)
+      .ease(d3.easeBackOut);
 
     // Add OnPush badge with modern design
     const onPushNodes = nodeGroups.filter(d => d.originalNode.isOnPushStrategy);
@@ -416,11 +424,49 @@ export class ComponentGraphComponent implements OnDestroy {
       .style('font-family', 'system-ui, -apple-system, sans-serif')
       .text(d => this.formatLastChangeTime(d.originalNode.lastChangeDetectionTime as number));
 
-    // Add click handlers
-    nodeGroups.on('click', (event, d) => {
-      event.stopPropagation();
-      this.nodeSelect.emit(d.id);
-    });
+    // Add modern hover and interaction states
+    nodeGroups
+      .on('mouseenter', (event, d) => {
+        const group = d3.select(event.currentTarget);
+        group.select('rect')
+          .transition()
+          .duration(200)
+          .ease(d3.easeBackOut)
+          .attr('transform', 'scale(1.05)')
+          .style('filter', 'drop-shadow(0 8px 24px rgba(0,0,0,0.2))');
+        
+        // Highlight connected links
+        this.g?.selectAll('.graph-link')
+          .style('opacity', (linkData: any) => {
+            const sourceId = typeof linkData.source === 'string' ? linkData.source : linkData.source.id;
+            const targetId = typeof linkData.target === 'string' ? linkData.target : linkData.target.id;
+            return (sourceId === d.id || targetId === d.id) ? 1 : 0.2;
+          })
+          .style('stroke-width', (linkData: any) => {
+            const sourceId = typeof linkData.source === 'string' ? linkData.source : linkData.source.id;
+            const targetId = typeof linkData.target === 'string' ? linkData.target : linkData.target.id;
+            return (sourceId === d.id || targetId === d.id) ? 3 : 2;
+          });
+      })
+      .on('mouseleave', (event, d) => {
+        const group = d3.select(event.currentTarget);
+        group.select('rect')
+          .transition()
+          .duration(200)
+          .ease(d3.easeBackOut)
+          .attr('transform', 'scale(1)')
+          .style('filter', 'drop-shadow(0 4px 16px rgba(0,0,0,0.12))');
+        
+        // Reset link styles
+        this.g?.selectAll('.graph-link')
+          .style('opacity', 0.7)
+          .style('stroke-width', 2);
+      })
+      .on('click', (event, d) => {
+        event.stopPropagation();
+        this.nodeSelect.emit(d.id);
+      })
+      .style('cursor', 'pointer');
 
     // Stop simulation to prevent unwanted movement
     this.simulation.stop();
@@ -518,21 +564,46 @@ export class ComponentGraphComponent implements OnDestroy {
   // Removed old D3 hierarchy methods - using simple layout instead
   
   private createGridPattern(defs: d3.Selection<SVGDefsElement, unknown, null, undefined>): void {
-    // Create ReactFlow-like dot grid pattern
+    // Create ReactFlow-like dot grid pattern with subtle modern styling
     const pattern = defs.append('pattern')
       .attr('id', 'dotGrid')
       .attr('width', 20)
       .attr('height', 20)
       .attr('patternUnits', 'userSpaceOnUse');
 
+    // Add subtle background for the pattern
+    pattern.append('rect')
+      .attr('width', 20)
+      .attr('height', 20)
+      .attr('fill', '#ffffff')
+      .attr('opacity', 0.8);
+
+    // Main dot pattern
     pattern.append('circle')
       .attr('cx', 10)
       .attr('cy', 10)
-      .attr('r', 0.5)
-      .attr('fill', '#d1d5db')
-      .attr('opacity', 0.4);
+      .attr('r', 0.8)
+      .attr('fill', '#e5e7eb')
+      .attr('opacity', 0.6);
 
-    // Add grid background (will be added later in initializeGraph when svg is available)
+    // Add secondary grid lines for better visual structure
+    pattern.append('line')
+      .attr('x1', 0)
+      .attr('y1', 10)
+      .attr('x2', 20)
+      .attr('y2', 10)
+      .attr('stroke', '#f3f4f6')
+      .attr('stroke-width', 0.5)
+      .attr('opacity', 0.3);
+
+    pattern.append('line')
+      .attr('x1', 10)
+      .attr('y1', 0)
+      .attr('x2', 10)
+      .attr('y2', 20)
+      .attr('stroke', '#f3f4f6')
+      .attr('stroke-width', 0.5)
+      .attr('opacity', 0.3);
   }
   
   private createGradients(defs: d3.Selection<SVGDefsElement, unknown, null, undefined>): void {

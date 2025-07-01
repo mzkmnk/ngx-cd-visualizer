@@ -451,7 +451,7 @@ export class VisualizerOverlayComponent {
   private readonly _showCounts = signal(true);
   private readonly _compactView = signal(false);
   private readonly _currentTheme = signal<VisualizerThemeType>('auto');
-  private readonly _viewMode = signal<'tree' | 'graph'>('tree');
+  private readonly _viewMode = signal<'tree' | 'graph'>('graph');
 
   // Computed properties
   readonly isMinimized = this._isMinimized.asReadonly();
@@ -488,11 +488,19 @@ export class VisualizerOverlayComponent {
   private resizeDirection: 'nw' | 'ne' | 'sw' | 'se' | 'n' | 'e' | 's' | 'w' | null = null;
 
   constructor() {
-    // Initialize position and size based on screen size (smaller, more appropriate size)
+    // Initialize position and size based on screen size and view mode
     effect(() => {
       if (typeof window !== 'undefined') {
-        const defaultWidth = Math.min(350, Math.floor(window.innerWidth / 5));
-        const defaultHeight = Math.min(450, Math.floor(window.innerHeight / 3));
+        const viewMode = this._viewMode();
+        
+        // Larger size for graph view to better display the graph visualization
+        const defaultWidth = viewMode === 'graph' 
+          ? Math.min(600, Math.floor(window.innerWidth * 0.4))  // 40% of screen width for graph
+          : Math.min(350, Math.floor(window.innerWidth / 5));   // Original size for tree
+          
+        const defaultHeight = viewMode === 'graph'
+          ? Math.min(500, Math.floor(window.innerHeight * 0.6)) // 60% of screen height for graph
+          : Math.min(450, Math.floor(window.innerHeight / 3));  // Original size for tree
         
         const initialX = window.innerWidth - defaultWidth - 20;
         const initialY = window.innerHeight - defaultHeight - 20;
@@ -567,7 +575,38 @@ export class VisualizerOverlayComponent {
   }
 
   toggleViewMode(): void {
-    this._viewMode.update(mode => mode === 'tree' ? 'graph' : 'tree');
+    this._viewMode.update(mode => {
+      const newMode = mode === 'tree' ? 'graph' : 'tree';
+      
+      // Automatically adjust size when switching view modes
+      if (typeof window !== 'undefined') {
+        const defaultWidth = newMode === 'graph' 
+          ? Math.min(600, Math.floor(window.innerWidth * 0.4))
+          : Math.min(350, Math.floor(window.innerWidth / 5));
+          
+        const defaultHeight = newMode === 'graph'
+          ? Math.min(500, Math.floor(window.innerHeight * 0.6))
+          : Math.min(450, Math.floor(window.innerHeight / 3));
+        
+        // Update size for the new view mode
+        this._size.set({
+          width: Math.max(250, defaultWidth),
+          height: Math.max(200, defaultHeight)
+        });
+        
+        // Adjust position to keep within screen bounds
+        const currentPos = this._position();
+        const maxX = window.innerWidth - defaultWidth - 20;
+        const maxY = window.innerHeight - defaultHeight - 20;
+        
+        this._position.set({
+          x: Math.min(currentPos.x, Math.max(20, maxX)),
+          y: Math.min(currentPos.y, Math.max(20, maxY))
+        });
+      }
+      
+      return newMode;
+    });
   }
 
   startDrag(event: MouseEvent): void {
