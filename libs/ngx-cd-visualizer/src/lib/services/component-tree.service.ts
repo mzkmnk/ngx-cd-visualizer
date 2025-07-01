@@ -196,7 +196,7 @@ export class ComponentTreeService {
     this.incrementChangeDetectionCount(rootComponentId, triggerSource);
     
     // Simulate propagation to children with delay
-    const simulatePropagation = (parentId: string, depth: number = 0) => {
+    const simulatePropagation = (parentId: string, depth = 0) => {
       const parent = nodes.find(n => n.id === parentId);
       if (!parent || depth > 2) return;
       

@@ -988,7 +988,7 @@ export class ComponentGraphComponent implements OnDestroy {
     return this.getTriggerColor(link.triggerType, 0.8);
   }
   
-  private getTriggerColor(triggerType?: string, opacity: number = 1): string {
+  private getTriggerColor(triggerType?: string, opacity = 1): string {
     const colors = {
       'user-interaction': '#3b82f6', // Blue
       'signal-update': '#10b981',    // Emerald  
