@@ -8,12 +8,11 @@ import {
   viewChild,
   effect,
   OnDestroy,
-  signal,
   inject
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as d3 from 'd3';
-import { ComponentNode } from '../models';
+import { ComponentNode, ChangeDetectionEvent } from '../models';
 import { ComponentTreeService } from '../services/component-tree.service';
 
 interface GraphNode extends d3.SimulationNodeDatum {
@@ -494,7 +493,7 @@ export class ComponentGraphComponent implements OnDestroy {
       .style('font-size', '10px')
       .style('font-weight', '600')
       .style('font-family', 'system-ui, -apple-system, sans-serif')
-      .text(d => this.getTriggerDescription(d.originalNode.triggerSource!));
+      .text(d => d.originalNode.triggerSource ? this.getTriggerDescription(d.originalNode.triggerSource) : '');
     
     // Add change detection count with modern styling
     nodeGroups.append('text')
@@ -549,18 +548,18 @@ export class ComponentGraphComponent implements OnDestroy {
         
         // Highlight connected links
         this.g?.selectAll('.graph-link')
-          .style('opacity', (linkData: any) => {
+          .style('opacity', (linkData: GraphLink) => {
             const sourceId = typeof linkData.source === 'string' ? linkData.source : linkData.source.id;
             const targetId = typeof linkData.target === 'string' ? linkData.target : linkData.target.id;
             return (sourceId === d.id || targetId === d.id) ? 1 : 0.2;
           })
-          .style('stroke-width', (linkData: any) => {
+          .style('stroke-width', (linkData: GraphLink) => {
             const sourceId = typeof linkData.source === 'string' ? linkData.source : linkData.source.id;
             const targetId = typeof linkData.target === 'string' ? linkData.target : linkData.target.id;
             return (sourceId === d.id || targetId === d.id) ? 3 : 2;
           });
       })
-      .on('mouseleave', (event, d) => {
+      .on('mouseleave', (event) => {
         const group = d3.select(event.currentTarget);
         group.select('rect')
           .transition()
@@ -808,7 +807,7 @@ export class ComponentGraphComponent implements OnDestroy {
     if (!this.g) return;
 
     this.g.selectAll('.graph-node')
-      .classed('selected', (d: any) => d.id === selectedNodeId);
+      .classed('selected', (d: GraphNode) => d.id === selectedNodeId);
   }
 
   private updateActiveStates(activeNodeIds: Set<string>): void {
@@ -824,30 +823,28 @@ export class ComponentGraphComponent implements OnDestroy {
       .transition()
       .duration(300)
       .ease(d3.easeBackOut)
-      .attr('fill', (d: any) => {
-        const node = d as GraphNode;
-        node.isActive = activeNodeIds.has(node.id);
-        return this.getNodeGradient(node);
+      .attr('fill', (d: GraphNode) => {
+        d.isActive = activeNodeIds.has(d.id);
+        return this.getNodeGradient(d);
       })
-      .attr('stroke', (d: any) => {
-        const node = d as GraphNode;
-        node.isActive = activeNodeIds.has(node.id);
-        return this.getNodeBorderColor(node);
+      .attr('stroke', (d: GraphNode) => {
+        d.isActive = activeNodeIds.has(d.id);
+        return this.getNodeBorderColor(d);
       })
-      .attr('width', (d: any) => {
+      .attr('width', (d: GraphNode) => {
         const sizeConfig = this.getNodeSizeConfig();
         return activeNodeIds.has(d.id) ? sizeConfig.width * 1.1 : sizeConfig.width;
       })
-      .attr('height', (d: any) => {
+      .attr('height', (d: GraphNode) => {
         const sizeConfig = this.getNodeSizeConfig();
         return activeNodeIds.has(d.id) ? sizeConfig.height * 1.1 : sizeConfig.height;
       })
-      .attr('x', (d: any) => {
+      .attr('x', (d: GraphNode) => {
         const sizeConfig = this.getNodeSizeConfig();
         const width = activeNodeIds.has(d.id) ? sizeConfig.width * 1.1 : sizeConfig.width;
         return -width / 2;
       })
-      .attr('y', (d: any) => {
+      .attr('y', (d: GraphNode) => {
         const sizeConfig = this.getNodeSizeConfig();
         const height = activeNodeIds.has(d.id) ? sizeConfig.height * 1.1 : sizeConfig.height;
         return -height / 2;
@@ -856,14 +853,14 @@ export class ComponentGraphComponent implements OnDestroy {
     // Update change detection counts in real-time
     this.g.selectAll('.graph-node')
       .select('.graph-count')
-      .text((d: any) => {
+      .text((d: GraphNode) => {
         return `CD: ${d.originalNode.changeDetectionCount}`;
       });
 
     // Update time stamps for active nodes
     this.g.selectAll('.graph-node')
       .select('.graph-time')
-      .text((d: any) => {
+      .text((d: GraphNode) => {
         if (d.originalNode.lastChangeDetectionTime) {
           return this.formatLastChangeTime(d.originalNode.lastChangeDetectionTime);
         }
@@ -910,8 +907,8 @@ export class ComponentGraphComponent implements OnDestroy {
     });
     
     while (queue.length > 0) {
-      const current = queue.shift()!;
-      if (visited.has(current.nodeId)) continue;
+      const current = queue.shift();
+      if (!current || visited.has(current.nodeId)) continue;
       visited.add(current.nodeId);
       
       // Find nodes that were propagated from this node
@@ -939,7 +936,6 @@ export class ComponentGraphComponent implements OnDestroy {
     
     // Create smooth bezier curve like React Flow
     const dx = targetPos.x - sourcePos.x;
-    const dy = targetPos.y - sourcePos.y;
     const curvature = link.isPropagationPath ? 0.4 : 0.3;
     
     // Control points for smooth curve
@@ -966,7 +962,6 @@ export class ComponentGraphComponent implements OnDestroy {
     
     // Arrow dimensions
     const arrowLength = 8;
-    const arrowWidth = 6;
     
     // Calculate arrow points
     const x1 = targetPos.x - arrowLength * Math.cos(angle - Math.PI / 6);
@@ -1009,23 +1004,17 @@ export class ComponentGraphComponent implements OnDestroy {
     return icons[triggerType as keyof typeof icons] || icons.unknown;
   }
   
-  private getTriggerDescription(trigger: any): string {
-    if (trigger.details?.description) {
-      return trigger.details.description.length > 12 
-        ? trigger.details.description.substring(0, 12) + '...'
-        : trigger.details.description;
-    }
-    
-    switch (trigger.type) {
+  private getTriggerDescription(trigger: ChangeDetectionEvent): string {
+    switch (trigger.trigger) {
       case 'user-interaction':
-        return trigger.details?.event ? `${trigger.details.event}` : 'User Click';
+        return 'User Click';
       case 'signal-update':
-        return trigger.details?.signalName ? `${trigger.details.signalName}` : 'Signal';
+        return 'Signal';
       case 'async-operation':
-        return trigger.details?.asyncType ? `${trigger.details.asyncType}` : 'Async';
+        return 'Async';
       case 'input-change':
-        return trigger.details?.inputProperty ? `@${trigger.details.inputProperty}` : 'Input';
-      case 'manual':
+        return 'Input';
+      case 'manual-trigger':
         return 'Manual';
       default:
         return 'Unknown';
@@ -1040,12 +1029,18 @@ export class ComponentGraphComponent implements OnDestroy {
     
     if (triggerNodes.length === 0) return;
     
-    // Start animation from the trigger source
+    // Start animation from the trigger source to the target
     const rootTrigger = triggerNodes[0];
     this.activateNode(rootTrigger.id);
+    
+    // TODO: Implement path animation to targetNodeId
+    // For now, just activate the target node after a delay
+    setTimeout(() => {
+      this.activateNode(targetNodeId);
+    }, 300);
   }
   
-  private animateSingleLink(linkGroup: d3.Selection<any, any, any, any>, linkData: GraphLink): void {
+  private animateSingleLink(linkGroup: d3.Selection<SVGGElement, GraphLink, null, undefined>, linkData: GraphLink): void {
     const pathElement = linkGroup.select('.graph-link-path').node() as SVGPathElement;
     const flowDot = linkGroup.select('.flow-dot');
     const glowDot = linkGroup.select('.flow-dot-glow');
@@ -1057,8 +1052,9 @@ export class ComponentGraphComponent implements OnDestroy {
     
     // Reset any existing animations
     const linkId = `${typeof linkData.source === 'string' ? linkData.source : linkData.source.id}-${targetId}`;
-    if (this.propagationAnimations.has(linkId)) {
-      this.propagationAnimations.get(linkId)!.stop();
+    const existingAnimation = this.propagationAnimations.get(linkId);
+    if (existingAnimation) {
+      existingAnimation.stop();
     }
     
     // Show dots
@@ -1105,7 +1101,7 @@ export class ComponentGraphComponent implements OnDestroy {
     
     // Find and animate the target node
     const nodeGroup = this.g.selectAll('.graph-node')
-      .filter((d: any) => d.id === nodeId);
+      .filter((d: GraphNode) => d.id === nodeId);
     
     if (nodeGroup.empty()) return;
     

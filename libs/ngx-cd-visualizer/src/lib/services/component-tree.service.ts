@@ -160,7 +160,7 @@ export class ComponentTreeService {
     });
   }
 
-  incrementChangeDetectionCount(componentId: string, triggerSource?: any, propagatedFrom?: string): void {
+  incrementChangeDetectionCount(componentId: string, triggerSource?: unknown, propagatedFrom?: string): void {
     const nodes = this._componentTree();
     const updatedNodes = nodes.map(node => 
       node.id === componentId 
@@ -192,7 +192,7 @@ export class ComponentTreeService {
     
     // Create trigger source
     const triggerSource = {
-      type: triggerType as any,
+      type: triggerType,
       details: { description },
       confidence: 'high' as const
     };
