@@ -8,6 +8,14 @@ import {
   effect
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { 
+  tablerWorld, 
+  tablerTrees, 
+  tablerMinus, 
+  tablerX,
+  tablerMaximize
+} from '@ng-icons/tabler-icons';
 import { ComponentTreeService } from '../services/component-tree.service';
 import { CdVisualizerService } from '../services/cd-visualizer.service';
 import { EnhancedTreeComponent } from './enhanced-tree.component';
@@ -51,19 +59,25 @@ import { FilterMode, VisualizerThemeType } from '../models';
             class="control-btn view-toggle-btn"
             (click)="toggleViewMode()"
             [title]="viewMode() === 'tree' ? 'Switch to Graph View' : 'Switch to Tree View'">
-            {{viewMode() === 'tree' ? '🌐' : '🌳'}}
+            <ng-icon 
+              [name]="viewMode() === 'tree' ? 'tablerWorld' : 'tablerTrees'"
+              size="16">
+            </ng-icon>
           </button>
           <button 
             class="control-btn"
             (click)="toggleMinimized()"
             [title]="isMinimized() ? 'Expand' : 'Minimize'">
-            {{isMinimized() ? '◊' : '−'}}
+            <ng-icon 
+              [name]="isMinimized() ? 'tablerMaximize' : 'tablerMinus'" 
+              size="16">
+            </ng-icon>
           </button>
           <button 
             class="control-btn close-btn"
             (click)="close()"
             title="Close">
-            ×
+            <ng-icon name="tablerX" size="16"></ng-icon>
           </button>
         </div>
       </div>
@@ -166,10 +180,10 @@ import { FilterMode, VisualizerThemeType } from '../models';
   styles: [`
     .cd-visualizer-overlay {
       position: fixed;
-      min-width: 250px;
-      max-width: 90vw;
-      min-height: 40px;
-      max-height: 90vh;
+      min-width: 350px;
+      max-width: 95vw;
+      min-height: 300px;
+      max-height: 95vh;
       background: var(--cd-bg, #ffffff);
       border: 1px solid var(--cd-border, #e0e0e0);
       border-radius: 8px;
@@ -427,8 +441,17 @@ import { FilterMode, VisualizerThemeType } from '../models';
       }
     }
   `],
-  imports: [CommonModule, EnhancedTreeComponent, ComponentGraphComponent, VisualizerToolbarComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  imports: [CommonModule, NgIcon, EnhancedTreeComponent, ComponentGraphComponent, VisualizerToolbarComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [
+    provideIcons({ 
+      tablerWorld, 
+      tablerTrees, 
+      tablerMinus, 
+      tablerX,
+      tablerMaximize
+    })
+  ]
 })
 export class VisualizerOverlayComponent {
   private componentTreeService = inject(ComponentTreeService);
@@ -493,14 +516,14 @@ export class VisualizerOverlayComponent {
       if (typeof window !== 'undefined') {
         const viewMode = this._viewMode();
         
-        // Larger size for graph view to better display the graph visualization
+        // Developer tool typical size - similar to React DevTools, Vue DevTools
         const defaultWidth = viewMode === 'graph' 
-          ? Math.min(600, Math.floor(window.innerWidth * 0.4))  // 40% of screen width for graph
-          : Math.min(350, Math.floor(window.innerWidth / 5));   // Original size for tree
+          ? Math.min(800, Math.floor(window.innerWidth * 0.5))  // 50% of screen width for graph (like DevTools)
+          : Math.min(400, Math.floor(window.innerWidth * 0.25)); // 25% for tree view
           
         const defaultHeight = viewMode === 'graph'
-          ? Math.min(500, Math.floor(window.innerHeight * 0.6)) // 60% of screen height for graph
-          : Math.min(450, Math.floor(window.innerHeight / 3));  // Original size for tree
+          ? Math.min(600, Math.floor(window.innerHeight * 0.75)) // 75% of screen height for graph
+          : Math.min(500, Math.floor(window.innerHeight * 0.4)); // 40% for tree view
         
         const initialX = window.innerWidth - defaultWidth - 20;
         const initialY = window.innerHeight - defaultHeight - 20;
@@ -511,8 +534,8 @@ export class VisualizerOverlayComponent {
         });
         
         this._size.set({
-          width: Math.max(250, defaultWidth), // Ensure minimum width
-          height: Math.max(200, defaultHeight) // Ensure minimum height
+          width: Math.max(350, defaultWidth), // Ensure minimum width for dev tools
+          height: Math.max(300, defaultHeight) // Ensure minimum height for dev tools
         });
       }
     });
@@ -581,17 +604,17 @@ export class VisualizerOverlayComponent {
       // Automatically adjust size when switching view modes
       if (typeof window !== 'undefined') {
         const defaultWidth = newMode === 'graph' 
-          ? Math.min(600, Math.floor(window.innerWidth * 0.4))
-          : Math.min(350, Math.floor(window.innerWidth / 5));
+          ? Math.min(800, Math.floor(window.innerWidth * 0.5))
+          : Math.min(400, Math.floor(window.innerWidth * 0.25));
           
         const defaultHeight = newMode === 'graph'
-          ? Math.min(500, Math.floor(window.innerHeight * 0.6))
-          : Math.min(450, Math.floor(window.innerHeight / 3));
+          ? Math.min(600, Math.floor(window.innerHeight * 0.75))
+          : Math.min(500, Math.floor(window.innerHeight * 0.4));
         
         // Update size for the new view mode
         this._size.set({
-          width: Math.max(250, defaultWidth),
-          height: Math.max(200, defaultHeight)
+          width: Math.max(350, defaultWidth),
+          height: Math.max(300, defaultHeight)
         });
         
         // Adjust position to keep within screen bounds
@@ -665,38 +688,38 @@ export class VisualizerOverlayComponent {
         // Calculate new dimensions and position based on resize direction
         switch (this.resizeDirection) {
           case 'nw': // Top-left corner
-            newWidth = Math.max(250, this.resizeStartSize.width - deltaX);
-            newHeight = Math.max(150, this.resizeStartSize.height - deltaY);
-            newX = Math.min(this.resizeStartPosition.x + deltaX, this.resizeStartPosition.x + this.resizeStartSize.width - 250);
-            newY = Math.min(this.resizeStartPosition.y + deltaY, this.resizeStartPosition.y + this.resizeStartSize.height - 150);
+            newWidth = Math.max(350, this.resizeStartSize.width - deltaX);
+            newHeight = Math.max(300, this.resizeStartSize.height - deltaY);
+            newX = Math.min(this.resizeStartPosition.x + deltaX, this.resizeStartPosition.x + this.resizeStartSize.width - 350);
+            newY = Math.min(this.resizeStartPosition.y + deltaY, this.resizeStartPosition.y + this.resizeStartSize.height - 300);
             break;
           case 'ne': // Top-right corner
-            newWidth = Math.max(250, this.resizeStartSize.width + deltaX);
-            newHeight = Math.max(150, this.resizeStartSize.height - deltaY);
-            newY = Math.min(this.resizeStartPosition.y + deltaY, this.resizeStartPosition.y + this.resizeStartSize.height - 150);
+            newWidth = Math.max(350, this.resizeStartSize.width + deltaX);
+            newHeight = Math.max(300, this.resizeStartSize.height - deltaY);
+            newY = Math.min(this.resizeStartPosition.y + deltaY, this.resizeStartPosition.y + this.resizeStartSize.height - 300);
             break;
           case 'sw': // Bottom-left corner
-            newWidth = Math.max(250, this.resizeStartSize.width - deltaX);
-            newHeight = Math.max(150, this.resizeStartSize.height + deltaY);
-            newX = Math.min(this.resizeStartPosition.x + deltaX, this.resizeStartPosition.x + this.resizeStartSize.width - 250);
+            newWidth = Math.max(350, this.resizeStartSize.width - deltaX);
+            newHeight = Math.max(300, this.resizeStartSize.height + deltaY);
+            newX = Math.min(this.resizeStartPosition.x + deltaX, this.resizeStartPosition.x + this.resizeStartSize.width - 350);
             break;
           case 'se': // Bottom-right corner
-            newWidth = Math.max(250, this.resizeStartSize.width + deltaX);
-            newHeight = Math.max(150, this.resizeStartSize.height + deltaY);
+            newWidth = Math.max(350, this.resizeStartSize.width + deltaX);
+            newHeight = Math.max(300, this.resizeStartSize.height + deltaY);
             break;
           case 'n': // Top edge
-            newHeight = Math.max(150, this.resizeStartSize.height - deltaY);
-            newY = Math.min(this.resizeStartPosition.y + deltaY, this.resizeStartPosition.y + this.resizeStartSize.height - 150);
+            newHeight = Math.max(300, this.resizeStartSize.height - deltaY);
+            newY = Math.min(this.resizeStartPosition.y + deltaY, this.resizeStartPosition.y + this.resizeStartSize.height - 300);
             break;
           case 'e': // Right edge
-            newWidth = Math.max(250, this.resizeStartSize.width + deltaX);
+            newWidth = Math.max(350, this.resizeStartSize.width + deltaX);
             break;
           case 's': // Bottom edge
-            newHeight = Math.max(150, this.resizeStartSize.height + deltaY);
+            newHeight = Math.max(300, this.resizeStartSize.height + deltaY);
             break;
           case 'w': // Left edge
-            newWidth = Math.max(250, this.resizeStartSize.width - deltaX);
-            newX = Math.min(this.resizeStartPosition.x + deltaX, this.resizeStartPosition.x + this.resizeStartSize.width - 250);
+            newWidth = Math.max(350, this.resizeStartSize.width - deltaX);
+            newX = Math.min(this.resizeStartPosition.x + deltaX, this.resizeStartPosition.x + this.resizeStartSize.width - 350);
             break;
         }
 
@@ -705,6 +728,10 @@ export class VisualizerOverlayComponent {
         newHeight = Math.min(newHeight, window.innerHeight - newY - 20);
         newX = Math.max(0, Math.min(newX, window.innerWidth - newWidth));
         newY = Math.max(0, Math.min(newY, window.innerHeight - newHeight));
+        
+        // Enforce developer tool minimum sizes
+        newWidth = Math.max(350, newWidth);
+        newHeight = Math.max(300, newHeight);
 
         this._size.set({ width: newWidth, height: newHeight });
         this._position.set({ x: newX, y: newY });

@@ -5,6 +5,20 @@ import {
   output
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { 
+  tablerRefresh, 
+  tablerRefreshOff, 
+  tablerClock, 
+  tablerClockOff,
+  tablerHash,
+  tablerMaximize,
+  tablerMinimize,
+  tablerSun,
+  tablerMoon,
+  tablerDevices,
+  tablerComponents
+} from '@ng-icons/tabler-icons';
 import { FilterMode, VisualizerThemeType } from '../models';
 
 /**
@@ -56,10 +70,7 @@ import { FilterMode, VisualizerThemeType } from '../models';
           [disabled]="isScanning()"
           (click)="scanComponents.emit()"
           title="Rescan component tree">
-          <svg width="14" height="14" viewBox="0 0 14 14">
-            <path d="M7 1L10 4M7 1L4 4M7 1V8M13 7C13 10.314 10.314 13 7 13S1 10.314 1 7" 
-                  stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-          </svg>
+          <ng-icon name="tablerRefresh" size="14"></ng-icon>
           {{ isScanning() ? 'Scanning...' : 'Scan' }}
         </button>
         
@@ -67,10 +78,7 @@ import { FilterMode, VisualizerThemeType } from '../models';
           class="action-btn reset-btn"
           (click)="resetActivity.emit()"
           title="Reset all activity states">
-          <svg width="14" height="14" viewBox="0 0 14 14">
-            <path d="M13 7C13 10.314 10.314 13 7 13S1 10.314 1 7S3.686 1 7 1C8.5 1 9.5 1.5 10.5 2.5" 
-                  stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-          </svg>
+          <ng-icon name="tablerRefreshOff" size="14"></ng-icon>
           Reset
         </button>
       </div>
@@ -83,10 +91,7 @@ import { FilterMode, VisualizerThemeType } from '../models';
             [class.active]="showTimestamps()"
             (click)="toggleTimestamps()"
             title="Toggle timestamps">
-            <svg width="12" height="12" viewBox="0 0 12 12">
-              <circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <path d="M6 3V6L8 8" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-            </svg>
+            <ng-icon name="tablerClock" size="12"></ng-icon>
           </button>
           
           <button 
@@ -94,11 +99,7 @@ import { FilterMode, VisualizerThemeType } from '../models';
             [class.active]="showCounts()"
             (click)="toggleCounts()"
             title="Toggle change detection counts">
-            <svg width="12" height="12" viewBox="0 0 12 12">
-              <rect x="1" y="4" width="10" height="1.5" fill="currentColor"/>
-              <rect x="1" y="6.5" width="7" height="1.5" fill="currentColor"/>
-              <rect x="1" y="9" width="4" height="1.5" fill="currentColor"/>
-            </svg>
+            <ng-icon name="tablerHash" size="12"></ng-icon>
           </button>
 
           <button 
@@ -106,11 +107,10 @@ import { FilterMode, VisualizerThemeType } from '../models';
             [class.active]="compact()"
             (click)="toggleCompact()"
             title="Toggle compact view">
-            <svg width="12" height="12" viewBox="0 0 12 12">
-              <rect x="1" y="2" width="10" height="1" fill="currentColor"/>
-              <rect x="1" y="5" width="10" height="1" fill="currentColor"/>
-              <rect x="1" y="8" width="10" height="1" fill="currentColor"/>
-            </svg>
+            <ng-icon 
+              [name]="compact() ? 'tablerMinimize' : 'tablerMaximize'" 
+              size="12">
+            </ng-icon>
           </button>
         </div>
       </div>
@@ -123,23 +123,13 @@ import { FilterMode, VisualizerThemeType } from '../models';
           [title]="'Current theme: ' + theme()">
           @switch (theme()) {
             @case ('light') {
-              <svg width="14" height="14" viewBox="0 0 14 14">
-                <circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/>
-                <path d="M7 1V3M7 11V13M1 7H3M11 7H13M2.5 2.5L4 4M10 10L11.5 11.5M11.5 2.5L10 4M4 10L2.5 11.5" 
-                      stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
+              <ng-icon name="tablerSun" size="14"></ng-icon>
             }
             @case ('dark') {
-              <svg width="14" height="14" viewBox="0 0 14 14">
-                <path d="M7 1C7 1 10 3 10 7S7 13 7 13C10.314 13 13 10.314 13 7S10.314 1 7 1Z" 
-                      stroke="currentColor" stroke-width="1.5" fill="none"/>
-              </svg>
+              <ng-icon name="tablerMoon" size="14"></ng-icon>
             }
             @default {
-              <svg width="14" height="14" viewBox="0 0 14 14">
-                <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
-                <path d="M7 1V7L13 7" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              </svg>
+              <ng-icon name="tablerDevices" size="14"></ng-icon>
             }
           }
         </button>
@@ -149,16 +139,11 @@ import { FilterMode, VisualizerThemeType } from '../models';
       <div class="toolbar-section stats-section">
         <div class="stats">
           <span class="stat-item" title="Total components">
-            <svg width="12" height="12" viewBox="0 0 12 12">
-              <rect x="1" y="1" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
-            </svg>
+            <ng-icon name="tablerComponents" size="12"></ng-icon>
             {{ componentCount() }}
           </span>
           <span class="stat-item onpush" title="OnPush components">
-            <svg width="12" height="12" viewBox="0 0 12 12">
-              <rect x="1" y="1" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <circle cx="6" cy="6" r="2" fill="currentColor"/>
-            </svg>
+            <ng-icon name="tablerComponents" size="12"></ng-icon>
             {{ onPushCount() }}
           </span>
         </div>
@@ -346,8 +331,23 @@ import { FilterMode, VisualizerThemeType } from '../models';
       }
     }
   `],
-  imports: [CommonModule],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  imports: [CommonModule, NgIcon],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [
+    provideIcons({ 
+      tablerRefresh, 
+      tablerRefreshOff, 
+      tablerClock, 
+      tablerClockOff,
+      tablerHash,
+      tablerMaximize,
+      tablerMinimize,
+      tablerSun,
+      tablerMoon,
+      tablerDevices,
+      tablerComponents
+    })
+  ]
 })
 export class VisualizerToolbarComponent {
   // Inputs
