@@ -138,7 +138,12 @@ export class ComponentTreeService {
     const nodes = this._componentTree();
     const updatedNodes = nodes.map(node => 
       node.id === componentId 
-        ? { ...node, isActive, lastChangeDetectionTime: isActive ? Date.now() : node.lastChangeDetectionTime }
+        ? { 
+            ...node, 
+            isActive, 
+            lastChangeDetectionTime: isActive ? Date.now() : node.lastChangeDetectionTime,
+            changeDetectionCount: isActive ? node.changeDetectionCount + 1 : node.changeDetectionCount
+          }
         : node
     );
     this._componentTree.set(updatedNodes);
